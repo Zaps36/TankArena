@@ -1,4 +1,7 @@
-// Logika game (authoritative di server). Tidak ada dependensi I/O di sini.
+// Logika game. Tidak ada dependensi I/O di sini.
+// Dipakai di server (multiplayer) dan di browser (mode lawan bot).
+(function (root) {
+'use strict';
 
 const WORLD = { width: 1000, height: 700 };
 const TANK_RADIUS = 18;
@@ -215,6 +218,71 @@ function step(game, dt) {
   return events;
 }
 
+// Cek apakah garis dari (x1,y1) ke (x2,y2) tidak tertutup rintangan.
+function hasLineOfSight(x1, y1, x2, y2) {
+  const dist = Math.hypot(x2 - x1, y2 - y1);
+  const steps = Math.ceil(dist / 10);
+  for (let i = 1; i < steps; i++) {
+    const t = i / steps;
+    const x = x1 + (x2 - x1) * t;
+    const y = y1 + (y2 - y1) * t;
+    if (OBSTACLES.some((r) => hitsRect(x, y, r))) return false;
+  }
+  return true;
+}
+
+const IDLE_INPUT = { mx: 0, my: 0, ax: 0, ay: 0, aiming: false, fire: false };
+
+// AI bot sederhana: kejar pemain hidup terdekat, menyamping sambil membidik,
+// dan menembak hanya saat sudah lurus ke target dengan garis pandang bebas.
+function botInput(game, botId) {
+  const me = game.players.get(botId);
+  if (!me || !me.alive) return IDLE_INPUT;
+
+  let target = null;
+  let best = Infinity;
+  for (const p of game.players.values()) {
+    if (p.id === botId || !p.alive) continue;
+    const d = Math.hypot(p.x - me.x, p.y - me.y);
+    if (d < best) {
+      best = d;
+      target = p;
+    }
+  }
+  if (!target) return IDLE_INPUT;
+
+  const dx = target.x - me.x;
+  const dy = target.y - me.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len;
+  const uy = dy / len;
+
+  // Jaga jarak: maju jika jauh, mundur jika terlalu dekat, dan menyamping dengan arah tetap per bot.
+  const side = me.slot % 2 === 0 ? 1 : -1;
+  let mx = -uy * 0.6 * side;
+  let my = ux * 0.6 * side;
+  if (len > 260) {
+    mx += ux;
+    my += uy;
+  } else if (len < 160) {
+    mx -= ux;
+    my -= uy;
+  }
+
+  const aimAngle = Math.atan2(dy, dx);
+  const angleDiff = Math.abs(Math.atan2(Math.sin(aimAngle - me.angle), Math.cos(aimAngle - me.angle)));
+  const canShoot = len < 600 && hasLineOfSight(me.x, me.y, target.x, target.y);
+
+  return {
+    mx: clamp(mx, -1, 1),
+    my: clamp(my, -1, 1),
+    ax: ux,
+    ay: uy,
+    aiming: true,
+    fire: canShoot && angleDiff < 0.12,
+  };
+}
+
 function snapshot(game) {
   return {
     world: WORLD,
@@ -236,7 +304,7 @@ function snapshot(game) {
   };
 }
 
-module.exports = {
+const TankGame = {
   WORLD,
   TANK_RADIUS,
   MAX_PLAYERS,
@@ -246,4 +314,12 @@ module.exports = {
   setInput,
   step,
   snapshot,
+  botInput,
 };
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = TankGame;
+} else {
+  root.TankGame = TankGame;
+}
+})(typeof window !== 'undefined' ? window : globalThis);

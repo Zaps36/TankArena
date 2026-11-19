@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Tank Arena - Lawan Bot</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #111; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+    body { display: flex; align-items: center; justify-content: center; }
+    canvas {
+      display: block; background: #1d2a1d; touch-action: none;
+      width: min(100vw, calc(100vh * 1000 / 700));
+      height: auto;
+    }
+    #menu { position: fixed; bottom: 8px; right: 8px; }
+    #menu a { color: #888; font: 12px system-ui, sans-serif; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <canvas id="game" width="1000" height="700"></canvas>
+  <div id="menu"><a href="tv.html">Mode multiplayer (butuh server)</a></div>
+  <script src="game.js"></script>
+  <script src="solo.js"></script>
+</body>
+</html>

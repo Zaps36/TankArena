@@ -3,14 +3,14 @@ const http = require('http');
 const express = require('express');
 const { Server } = require('socket.io');
 const QRCode = require('qrcode');
-const game = require('./game');
+const game = require('./docs/game');
 
 const PORT = process.env.PORT || 3000;
 const TICK_RATE = 30; // update simulasi per detik
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 const app = express();
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'docs')));
 
 const server = http.createServer(app);
 const io = new Server(server);
