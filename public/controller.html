@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Tank Arena - Controller</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: #111; color: #eee; font-family: system-ui, sans-serif; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+    #join { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 12px; padding: 20px; }
+    #join input { font-size: 18px; padding: 10px; width: 80%; max-width: 280px; border-radius: 6px; border: none; }
+    #join button, #retry { font-size: 18px; padding: 10px 24px; border-radius: 6px; border: none; background: #e74c3c; color: #fff; }
+    #err { color: #ff8a80; min-height: 20px; }
+    #game { display: none; height: 100%; position: relative; }
+    .stick {
+      position: absolute; bottom: 30px; width: 150px; height: 150px; border-radius: 50%;
+      background: rgba(255,255,255,0.12); border: 2px solid rgba(255,255,255,0.3);
+    }
+    .knob {
+      position: absolute; width: 60px; height: 60px; border-radius: 50%;
+      background: rgba(255,255,255,0.5); left: 45px; top: 45px; pointer-events: none;
+    }
+    #left { left: 30px; }
+    #right { right: 30px; }
+    #fire {
+      position: absolute; bottom: 210px; right: 40px; width: 96px; height: 96px; border-radius: 50%;
+      background: #e74c3c; color: #fff; font-size: 18px; font-weight: bold; border: none;
+    }
+    #status { position: absolute; top: 10px; left: 0; right: 0; text-align: center; font-size: 13px; color: #aaa; }
+  </style>
+</head>
+<body>
+  <div id="join">
+    <h2>Tank Arena</h2>
+    <div>Room: <span id="room-code"></span></div>
+    <input id="name" maxlength="12" placeholder="Nama kamu" />
+    <button id="join-btn">Masuk</button>
+    <div id="err"></div>
+  </div>
+
+  <div id="game">
+    <div id="status">Kiri: gerak &middot; Kanan: bidik &middot; Tombol merah: tembak</div>
+    <div class="stick" id="left"><div class="knob" id="left-knob"></div></div>
+    <div class="stick" id="right"><div class="knob" id="right-knob"></div></div>
+    <button id="fire">TEMBAK</button>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/controller.js"></script>
+</body>
+</html>

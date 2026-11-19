@@ -1,0 +1,15 @@
+{
+  "name": "tank-arena",
+  "version": "0.1.0",
+  "description": "Draft arena tank shooter. Layar utama di browser, HP sebagai controller lewat QR.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.2",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.7.5"
+  }
+}

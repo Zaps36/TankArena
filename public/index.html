@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tank Arena - Layar Utama</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #111; color: #eee; font-family: system-ui, sans-serif; }
+    body { display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    #wrap { position: relative; }
+    canvas { background: #1d2a1d; display: block; max-width: 100vw; max-height: 100vh; width: auto; height: auto; }
+    #join {
+      position: absolute; top: 12px; left: 12px; background: rgba(0, 0, 0, 0.7);
+      padding: 10px; border-radius: 8px; text-align: center; width: 160px;
+    }
+    #join img { background: #fff; padding: 4px; border-radius: 6px; width: 140px; height: 140px; }
+    #join .code { font-size: 20px; font-weight: bold; letter-spacing: 3px; margin-top: 6px; }
+    #join .hint { font-size: 11px; color: #bbb; margin-top: 4px; }
+    #scores {
+      position: absolute; top: 12px; right: 12px; background: rgba(0, 0, 0, 0.7);
+      padding: 10px 14px; border-radius: 8px; min-width: 160px;
+    }
+    #scores h3 { margin: 0 0 6px; font-size: 14px; }
+    #scores div { font-size: 14px; margin: 3px 0; }
+    #notice {
+      position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.7); padding: 6px 12px; border-radius: 6px; font-size: 14px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <canvas id="game" width="1000" height="700"></canvas>
+    <div id="join">
+      <img id="qr" alt="QR untuk join" />
+      <div class="code" id="code">....</div>
+      <div class="hint">Scan QR dengan HP untuk jadi pemain</div>
+    </div>
+    <div id="scores"><h3>Skor</h3><div id="score-list">Belum ada pemain</div></div>
+    <div id="notice"></div>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/tv.js"></script>
+</body>
+</html>
