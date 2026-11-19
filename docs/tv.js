@@ -115,7 +115,7 @@
   }
 
   function drawGrid(w, h) {
-    ctx.strokeStyle = 'rgba(255,255,255,.04)';
+    ctx.strokeStyle = 'rgba(23,37,28,.08)';
     ctx.lineWidth = 1;
     for (let x = 0; x <= w; x += 50) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
     for (let y = 0; y <= h; y += 50) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
@@ -123,22 +123,38 @@
 
   function drawTank(p) {
     if (!p.alive) {
-      ctx.fillStyle = 'rgba(255,255,255,.55)';
-      ctx.font = '14px system-ui';
+      ctx.fillStyle = 'rgba(23,37,28,.8)';
+      ctx.font = 'bold 14px system-ui';
       ctx.textAlign = 'center';
       ctx.fillText(p.eliminated ? `${p.name} ELIMINATED` : `${p.name} respawn ${p.respawnIn}`, p.x, p.y);
       return;
     }
     ctx.save();
     ctx.translate(p.x, p.y);
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.shadowColor = 'rgba(0,0,0,.35)';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 4;
+    // Track kartun
+    ctx.fillStyle = '#303b32';
+    ctx.strokeStyle = '#17251c';
+    ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.roundRect(-22, -15, 44, 30, 10); ctx.fill(); ctx.stroke();
+    // Badan tank ber-outline tebal
+    ctx.shadowOffsetY = 0;
     ctx.fillStyle = p.color;
-    ctx.beginPath(); ctx.arc(0, 0, TANK_RADIUS, 0, Math.PI * 2); ctx.fill();
-    ctx.lineWidth = 2; ctx.strokeStyle = '#000'; ctx.stroke();
+    ctx.beginPath(); ctx.roundRect(-16, -13, 32, 26, 9); ctx.fill(); ctx.stroke();
+    // Laras dan turret
     ctx.rotate(p.angle);
-    ctx.fillStyle = '#222'; ctx.fillRect(0, -4, TANK_RADIUS + 10, 8);
+    ctx.fillStyle = '#252b25';
+    ctx.beginPath(); ctx.roundRect(2, -4, 27, 8, 4); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#f8d66d';
+    ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     ctx.restore();
-    ctx.fillStyle = '#fff'; ctx.font = '12px system-ui'; ctx.textAlign = 'center';
-    ctx.fillText(p.name, p.x, p.y - TANK_RADIUS - 14);
+    ctx.font = 'bold 13px system-ui'; ctx.textAlign = 'center'; ctx.lineWidth = 4; ctx.strokeStyle = '#17251c';
+    ctx.strokeText(p.name, p.x, p.y - TANK_RADIUS - 14);
+    ctx.fillStyle = '#fff'; ctx.fillText(p.name, p.x, p.y - TANK_RADIUS - 14);
     ctx.fillStyle = '#400'; ctx.fillRect(p.x - 18, p.y - TANK_RADIUS - 9, 36, 4);
     ctx.fillStyle = '#4f4'; ctx.fillRect(p.x - 18, p.y - TANK_RADIUS - 9, 36 * (p.hp / 100), 4);
   }
@@ -148,14 +164,21 @@
     drawGrid(canvas.width, canvas.height);
     const snapshot = TG.snapshot(state);
     for (const o of snapshot.obstacles) {
-      ctx.fillStyle = '#6b5b45'; ctx.fillRect(o.x, o.y, o.w, o.h);
-      ctx.strokeStyle = '#3e3427'; ctx.lineWidth = 3; ctx.strokeRect(o.x, o.y, o.w, o.h);
+      ctx.fillStyle = '#a9784d';
+      ctx.strokeStyle = '#4a3021';
+      ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.roundRect(o.x, o.y, o.w, o.h, 12); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,230,160,.45)';
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(o.x + 12, o.y + 12); ctx.lineTo(o.x + o.w - 12, o.y + 12); ctx.stroke();
     }
     ctx.fillStyle = '#ffe066';
-    for (const b of snapshot.bullets) { ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI * 2); ctx.fill(); }
+    ctx.strokeStyle = '#252b25';
+    ctx.lineWidth = 3;
+    for (const b of snapshot.bullets) { ctx.beginPath(); ctx.arc(b.x, b.y, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
     for (const p of snapshot.players) drawTank(p);
     if (!snapshot.players.length) {
-      ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.font = '24px system-ui'; ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(23,37,28,.75)'; ctx.font = 'bold 26px system-ui'; ctx.textAlign = 'center';
       ctx.fillText('Scan QR untuk mulai bermain', canvas.width / 2, canvas.height / 2);
     }
     requestAnimationFrame(render);

@@ -103,7 +103,7 @@
   }
 
   function drawGrid(w, h) {
-    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.strokeStyle = 'rgba(23,37,28,0.08)';
     ctx.lineWidth = 1;
     for (let x = 0; x <= w; x += 50) {
       ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
@@ -115,8 +115,8 @@
 
   function drawTank(p) {
     if (!p.alive) {
-      ctx.fillStyle = 'rgba(255,255,255,0.5)';
-      ctx.font = '14px system-ui';
+      ctx.fillStyle = 'rgba(23,37,28,0.8)';
+      ctx.font = 'bold 14px system-ui';
       ctx.textAlign = 'center';
       ctx.fillText(p.eliminated ? `${p.name} ELIMINATED` : `${p.name} respawn ${p.respawnIn}`, p.x, p.y);
       return;
@@ -124,21 +124,30 @@
     const r = TG.TANK_RADIUS;
     ctx.save();
     ctx.translate(p.x, p.y);
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.shadowColor = 'rgba(0,0,0,.35)';
+    ctx.shadowOffsetY = 4;
+    ctx.fillStyle = '#303b32';
+    ctx.strokeStyle = '#17251c';
+    ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.roundRect(-22, -15, 44, 30, 10); ctx.fill(); ctx.stroke();
+    ctx.shadowOffsetY = 0;
     ctx.fillStyle = p.color;
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#000';
-    ctx.stroke();
+    ctx.beginPath(); ctx.roundRect(-16, -13, 32, 26, 9); ctx.fill(); ctx.stroke();
     ctx.rotate(p.angle);
-    ctx.fillStyle = '#222';
-    ctx.fillRect(0, -4, r + 10, 8);
+    ctx.fillStyle = '#252b25';
+    ctx.beginPath(); ctx.roundRect(2, -4, 27, 8, 4); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#f8d66d';
+    ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     ctx.restore();
 
-    ctx.fillStyle = '#fff';
-    ctx.font = '12px system-ui';
+    ctx.font = 'bold 13px system-ui';
     ctx.textAlign = 'center';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#17251c';
+    ctx.strokeText(p.name, p.x, p.y - r - 14);
+    ctx.fillStyle = '#fff';
     ctx.fillText(p.name, p.x, p.y - r - 14);
 
     const barW = 36;
@@ -165,12 +174,13 @@
     const now = performance.now();
     const live = messages.filter((m) => m.until > now);
     ctx.textAlign = 'left';
-    ctx.fillStyle = '#ddd';
+    ctx.fillStyle = '#17251c';
+    ctx.font = 'bold 14px system-ui';
     live.forEach((m, i) => ctx.fillText(m.text, 12, canvas.height - 12 - (live.length - 1 - i) * 18));
 
     ctx.textAlign = 'left';
-    ctx.fillStyle = 'rgba(255,255,255,0.45)';
-    ctx.font = '12px system-ui';
+    ctx.fillStyle = 'rgba(23,37,28,0.75)';
+    ctx.font = 'bold 12px system-ui';
     ctx.fillText('WASD gerak, mouse bidik, klik/Spasi tembak, Shift dash. HP: analog kiri jalan, analog kanan bidik, DASH dash.', 12, 20);
   }
 
@@ -182,18 +192,23 @@
     const snap = TG.snapshot(state);
 
     for (const o of snap.obstacles) {
-      ctx.fillStyle = '#6b5b45';
-      ctx.fillRect(o.x, o.y, o.w, o.h);
-      ctx.strokeStyle = '#3e3427';
+      ctx.fillStyle = '#a9784d';
+      ctx.strokeStyle = '#4a3021';
+      ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.roundRect(o.x, o.y, o.w, o.h, 12); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,230,160,.45)';
       ctx.lineWidth = 3;
-      ctx.strokeRect(o.x, o.y, o.w, o.h);
+      ctx.beginPath(); ctx.moveTo(o.x + 12, o.y + 12); ctx.lineTo(o.x + o.w - 12, o.y + 12); ctx.stroke();
     }
 
     ctx.fillStyle = '#ffe066';
+    ctx.strokeStyle = '#252b25';
+    ctx.lineWidth = 3;
     for (const b of snap.bullets) {
       ctx.beginPath();
-      ctx.arc(b.x, b.y, 4, 0, Math.PI * 2);
+      ctx.arc(b.x, b.y, 5, 0, Math.PI * 2);
       ctx.fill();
+      ctx.stroke();
     }
 
     for (const p of snap.players) drawTank(p);

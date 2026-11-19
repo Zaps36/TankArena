@@ -5,21 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>Tank Arena Controller</title>
   <style>
-    * { box-sizing: border-box; }
-    html, body { margin: 0; height: 100%; background: #111; color: #eee; font-family: system-ui, sans-serif; overflow: hidden; touch-action: none; user-select: none; }
-    #join { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 12px; padding: 20px; }
-    #join input { font-size: 18px; padding: 10px; width: 80%; max-width: 280px; border-radius: 6px; border: none; }
-    #join button, #retry { font-size: 18px; padding: 10px 24px; border-radius: 6px; border: none; background: #3498db; color: #fff; }
-    #err { color: #ff8a80; min-height: 20px; text-align: center; }
+    html, body { margin: 0; height: 100%; background: radial-gradient(circle at 20% 0, #314b35, #111 70%); color: #eee; font-family: system-ui, sans-serif; overflow: hidden; touch-action: none; user-select: none; }
+    #join { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 12px; padding: 24px; text-align: center; }
+    #join h2 { color: #f1c40f; font-size: 28px; text-shadow: 3px 3px 0 #252b25; -webkit-text-stroke: 1px #252b25; animation: title-bob 2.5s ease-in-out infinite; }
+    #join input { font-size: 18px; padding: 12px; width: 80%; max-width: 280px; border: 4px solid #252b25; border-radius: 13px; background: #fff4d6; color: #263126; outline: none; }
+    #join button, #retry { font-size: 18px; padding: 12px 24px; border: 4px solid #252b25; border-radius: 13px; background: #3498db; color: #fff; box-shadow: 0 5px 0 #111a13; font-weight: 900; }
+    #join button:active { transform: translateY(3px); box-shadow: 0 2px 0 #111a13; }
+    #err { color: #ff8a80; min-height: 20px; text-align: center; font-weight: 700; }
     #game { display: none; height: 100%; position: relative; }
-    .stick { position: absolute; bottom: 30px; width: 150px; height: 150px; border-radius: 50%; background: rgba(255,255,255,.12); border: 2px solid rgba(255,255,255,.3); }
-    .knob { position: absolute; width: 60px; height: 60px; border-radius: 50%; background: rgba(255,255,255,.5); left: 45px; top: 45px; pointer-events: none; }
+    .stick { position: absolute; bottom: 30px; width: 150px; height: 150px; border-radius: 50%; background: rgba(255,244,214,.16); border: 4px solid rgba(255,255,255,.5); box-shadow: inset 0 0 0 6px rgba(37,43,37,.25), 0 5px 0 rgba(0,0,0,.35); }
+    .knob { position: absolute; width: 60px; height: 60px; border-radius: 50%; background: #f1c40f; border: 4px solid #252b25; left: 45px; top: 45px; pointer-events: none; box-shadow: 0 4px 0 #111a13; }
     #left { left: 24px; } #right { right: 24px; }
-    .action { position: absolute; border: 0; color: #fff; font-weight: 800; border-radius: 50%; }
+    .action { position: absolute; border: 4px solid #252b25; color: #fff; font-weight: 900; border-radius: 50%; box-shadow: 0 6px 0 #111a13; }
+    .action:active { transform: translateY(4px); box-shadow: 0 2px 0 #111a13; }
     #fire { bottom: 210px; right: 38px; width: 94px; height: 94px; background: #e74c3c; font-size: 16px; }
     #dash { bottom: 215px; left: 54%; width: 72px; height: 72px; background: #9b59b6; font-size: 14px; }
-    #status { position: absolute; top: 10px; left: 0; right: 0; text-align: center; font-size: 13px; color: #aaa; }
-    #life { position: absolute; top: 32px; left: 0; right: 0; text-align: center; color: #f1c40f; font-weight: bold; }
+    #status { position: absolute; top: 10px; left: 0; right: 0; text-align: center; font-size: 13px; color: #fff; text-shadow: 1px 1px 0 #111; font-weight: 700; }
+    #life { position: absolute; top: 32px; left: 0; right: 0; text-align: center; color: #f1c40f; font-weight: 900; font-size: 18px; text-shadow: 2px 2px 0 #252b25; }
+    @keyframes title-bob { 0%, 100% { transform: rotate(-2deg) translateY(0); } 50% { transform: rotate(2deg) translateY(-5px); } }
   </style>
 </head>
 <body>
