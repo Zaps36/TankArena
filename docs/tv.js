@@ -35,13 +35,15 @@
       const url = controllerUrl(id);
       codeEl.textContent = `ROOM ${id}`;
       loading.textContent = 'Room aktif · scan QR dari HP';
-      QRCode.toDataURL(url, { margin: 1, width: 260 }, (error, dataUrl) => {
-        if (error) {
-          loading.textContent = url;
-          return;
-        }
-        qrImg.src = dataUrl;
-      });
+      try {
+        const qr = qrcode(0, 'M');
+        qr.addData(url);
+        qr.make();
+        qrImg.src = qr.createDataURL(6, 2);
+      } catch (error) {
+        console.error(error);
+        loading.textContent = `QR gagal dibuat. Buka: ${url}`;
+      }
     });
     peer.on('connection', setupConnection);
     peer.on('error', (error) => {
