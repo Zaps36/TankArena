@@ -13,6 +13,10 @@ const FIRE_COOLDOWN = 0.45; // detik
 const MAX_HP = 100;
 const BULLET_DAMAGE = 34;
 const RESPAWN_TIME = 3; // detik
+const MAX_LIVES = 3;
+const DASH_DISTANCE = 120;
+const DASH_COOLDOWN = 2;
+const DASH_STEPS = 8;
 const MAX_PLAYERS = 4;
 
 // Rintangan berbentuk kotak: { x, y, w, h }
@@ -61,12 +65,16 @@ function addPlayer(game, id, name) {
     y: pos.y,
     angle: 0,
     hp: MAX_HP,
+    lives: MAX_LIVES,
     kills: 0,
     deaths: 0,
     alive: true,
+    eliminated: false,
     respawnIn: 0,
     cooldown: 0,
-    input: { mx: 0, my: 0, ax: 0, ay: 0, aiming: false, fire: false },
+    dashCooldown: 0,
+    lastDash: false,
+    input: { mx: 0, my: 0, ax: 0, ay: 0, aiming: false, fire: false, dash: false },
   };
   game.players.set(id, player);
   return player;
@@ -86,6 +94,7 @@ function setInput(game, id, input) {
     ay: clamp(Number(input.ay) || 0, -1, 1),
     aiming: !!input.aiming,
     fire: !!input.fire,
+    dash: !!input.dash,
   };
 }
 
@@ -150,17 +159,23 @@ function step(game, dt) {
   const events = [];
 
   for (const p of game.players.values()) {
+    p.dashCooldown = Math.max(0, p.dashCooldown - dt);
     if (!p.alive) {
+      if (p.eliminated) {
+        p.lastDash = !!p.input.dash;
+        continue;
+      }
       p.respawnIn -= dt;
-      if (p.respawnIn <= 0) {
+      if (p.respawnIn <= 0 && p.lives > 0) {
         const pos = spawnPoint(p.slot);
         Object.assign(p, { x: pos.x, y: pos.y, hp: MAX_HP, alive: true });
         events.push({ type: 'respawn', id: p.id });
       }
+      p.lastDash = !!p.input.dash;
       continue;
     }
 
-    const { mx, my, ax, ay, aiming, fire } = p.input;
+    const { mx, my, ax, ay, aiming, fire, dash } = p.input;
 
     // Gerak: joystick kiri. Arah tank mengikuti bidik jika bidik aktif, kalau tidak mengikuti gerak.
     const moveLen = Math.hypot(mx, my);
@@ -176,6 +191,24 @@ function step(game, dt) {
     } else if (moveLen > 0.05) {
       p.angle = Math.atan2(my, mx);
     }
+
+    if (dash && !p.lastDash && p.dashCooldown <= 0) {
+      let dx = aiming && Math.hypot(ax, ay) > 0.3 ? ax : mx;
+      let dy = aiming && Math.hypot(ax, ay) > 0.3 ? ay : my;
+      const dashLen = Math.hypot(dx, dy);
+      if (dashLen > 0.05) {
+        dx /= dashLen;
+        dy /= dashLen;
+        for (let i = 0; i < DASH_STEPS; i++) {
+          const moved = moveTank(p.x, p.y, (dx * DASH_DISTANCE) / DASH_STEPS, (dy * DASH_DISTANCE) / DASH_STEPS);
+          p.x = moved.x;
+          p.y = moved.y;
+        }
+        p.dashCooldown = DASH_COOLDOWN;
+        events.push({ type: 'dash', id: p.id });
+      }
+    }
+    p.lastDash = !!dash;
 
     p.cooldown = Math.max(0, p.cooldown - dt);
     if (fire && p.cooldown <= 0) {
@@ -204,10 +237,13 @@ function step(game, dt) {
           p.hp = 0;
           p.alive = false;
           p.deaths++;
-          p.respawnIn = RESPAWN_TIME;
+          p.lives--;
+          p.respawnIn = p.lives > 0 ? RESPAWN_TIME : 0;
+          p.eliminated = p.lives <= 0;
           const killer = game.players.get(b.ownerId);
           if (killer) killer.kills++;
-          events.push({ type: 'kill', killer: b.ownerId, victim: p.id });
+          events.push({ type: 'kill', killer: b.ownerId, victim: p.id, lives: p.lives, eliminated: p.eliminated });
+          if (p.eliminated) events.push({ type: 'eliminated', id: p.id });
         }
         return false;
       }
@@ -231,7 +267,7 @@ function hasLineOfSight(x1, y1, x2, y2) {
   return true;
 }
 
-const IDLE_INPUT = { mx: 0, my: 0, ax: 0, ay: 0, aiming: false, fire: false };
+const IDLE_INPUT = { mx: 0, my: 0, ax: 0, ay: 0, aiming: false, fire: false, dash: false };
 
 // AI bot sederhana: kejar pemain hidup terdekat, menyamping sambil membidik,
 // dan menembak hanya saat sudah lurus ke target dengan garis pandang bebas.
@@ -295,10 +331,13 @@ function snapshot(game) {
       y: Math.round(p.y),
       angle: p.angle,
       hp: p.hp,
+      lives: p.lives,
       kills: p.kills,
       deaths: p.deaths,
       alive: p.alive,
+      eliminated: p.eliminated,
       respawnIn: Math.max(0, Math.ceil(p.respawnIn)),
+      dashCooldown: Math.max(0, Math.ceil(p.dashCooldown * 10) / 10),
     })),
     bullets: game.bullets.map((b) => ({ id: b.id, x: Math.round(b.x), y: Math.round(b.y) })),
   };
@@ -308,6 +347,7 @@ const TankGame = {
   WORLD,
   TANK_RADIUS,
   MAX_PLAYERS,
+  MAX_LIVES,
   createGame,
   addPlayer,
   removePlayer,

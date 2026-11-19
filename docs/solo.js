@@ -47,6 +47,7 @@
     let aimY = 0;
     let aiming = false;
     let fire = keys.has('Space') || mouse.down;
+    const dash = keys.has('ShiftLeft') || keys.has('ShiftRight');
 
     if (touch.move) {
       mx = touch.move.dx;
@@ -70,7 +71,7 @@
       }
     }
 
-    return { mx, my, ax: aimX, ay: aimY, aiming, fire };
+    return { mx, my, ax: aimX, ay: aimY, aiming, fire, dash };
   }
 
   function addMessage(text) {
@@ -88,12 +89,16 @@
 
     const events = TG.step(state, dt);
     for (const ev of events) {
-      if (ev.type !== 'kill') continue;
-      const killer = state.players.get(ev.killer);
-      const victim = state.players.get(ev.victim);
-      const kName = killer ? killer.name : 'Seseorang';
-      const vName = victim ? victim.name : 'Seseorang';
-      addMessage(`${kName} menghancurkan ${vName}`);
+      if (ev.type === 'eliminated') {
+        const victim = state.players.get(ev.id);
+        addMessage(`${victim ? victim.name : 'Pemain'} kehabisan 3 nyawa`);
+      } else if (ev.type === 'kill') {
+        const killer = state.players.get(ev.killer);
+        const victim = state.players.get(ev.victim);
+        const kName = killer ? killer.name : 'Seseorang';
+        const vName = victim ? victim.name : 'Seseorang';
+        addMessage(`${kName} menghancurkan ${vName}`);
+      }
     }
   }
 
@@ -113,7 +118,7 @@
       ctx.fillStyle = 'rgba(255,255,255,0.5)';
       ctx.font = '14px system-ui';
       ctx.textAlign = 'center';
-      ctx.fillText(`${p.name} respawn ${p.respawnIn}`, p.x, p.y);
+      ctx.fillText(p.eliminated ? `${p.name} ELIMINATED` : `${p.name} respawn ${p.respawnIn}`, p.x, p.y);
       return;
     }
     const r = TG.TANK_RADIUS;
@@ -153,7 +158,8 @@
     ctx.fillText('Skor (kill / mati)', canvas.width - 16, 24);
     sorted.forEach((p, i) => {
       ctx.fillStyle = p.color;
-      ctx.fillText(`${p.name}: ${p.kills} / ${p.deaths}`, canvas.width - 16, 46 + i * 20);
+      const hearts = '♥'.repeat(Math.max(0, p.lives));
+      ctx.fillText(`${p.name}: ${p.kills} / ${p.deaths}  ${hearts}`, canvas.width - 16, 46 + i * 20);
     });
 
     const now = performance.now();
@@ -165,7 +171,7 @@
     ctx.textAlign = 'left';
     ctx.fillStyle = 'rgba(255,255,255,0.45)';
     ctx.font = '12px system-ui';
-    ctx.fillText('WASD gerak, mouse bidik, klik/Spasi tembak. HP: joystick kiri gerak, sentuh kanan bidik dan tembak.', 12, 20);
+    ctx.fillText('WASD gerak, mouse bidik, klik/Spasi tembak, Shift dash. HP: analog kiri jalan, analog kanan bidik, DASH dash.', 12, 20);
   }
 
   function render() {

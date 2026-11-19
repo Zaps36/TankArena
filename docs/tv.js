@@ -48,7 +48,7 @@
     for (const p of players) {
       const row = document.createElement('div');
       row.style.color = p.color;
-      row.textContent = `${p.name}: ${p.kills} kill / ${p.deaths} mati`;
+      row.textContent = `${p.name}: ${p.kills} kill / ${p.deaths} mati · ${'♥'.repeat(Math.max(0, p.lives))}`;
       scoreList.appendChild(row);
     }
   }
@@ -79,7 +79,7 @@
       ctx.fillStyle = 'rgba(255,255,255,0.5)';
       ctx.font = '14px system-ui';
       ctx.textAlign = 'center';
-      ctx.fillText(`${p.name} respawn ${p.respawnIn}`, p.x, p.y);
+      ctx.fillText(p.eliminated ? `${p.name} ELIMINATED` : `${p.name} respawn ${p.respawnIn}`, p.x, p.y);
       return;
     }
 

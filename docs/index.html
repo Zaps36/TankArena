@@ -3,23 +3,46 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>Tank Arena - Lawan Bot</title>
+  <title>Tank Arena</title>
   <style>
-    html, body { margin: 0; height: 100%; background: #111; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
-    body { display: flex; align-items: center; justify-content: center; }
-    canvas {
-      display: block; background: #1d2a1d; touch-action: none;
-      width: min(100vw, calc(100vh * 1000 / 700));
-      height: auto;
-    }
-    #menu { position: fixed; bottom: 8px; right: 8px; }
-    #menu a { color: #888; font: 12px system-ui, sans-serif; text-decoration: none; }
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: radial-gradient(circle at top, #263b2a, #0d110e 70%); color: #fff; font-family: system-ui, sans-serif; }
+    body { display: grid; place-items: center; padding: 24px; }
+    .menu { width: min(440px, 100%); text-align: center; background: rgba(0,0,0,.55); border: 1px solid #49624b; border-radius: 22px; padding: 34px 24px; box-shadow: 0 18px 60px #0008; }
+    h1 { margin: 0; color: #f1c40f; letter-spacing: 5px; font-size: clamp(32px, 10vw, 58px); }
+    .subtitle { color: #b9c7b9; margin: 8px 0 30px; }
+    button, a.button { display: block; width: 100%; border: 0; border-radius: 12px; padding: 15px 18px; margin: 12px 0; color: white; font-size: 18px; font-weight: 700; text-decoration: none; cursor: pointer; }
+    #solo { background: #2ecc71; } #multi { background: #3498db; }
+    .help { color: #9eaa9f; font-size: 13px; line-height: 1.5; margin-top: 24px; }
+    #game { display: none; position: fixed; inset: 0; place-items: center; background: #111; }
+    #game canvas { display: block; background: #1d2a1d; width: min(100vw, calc(100vh * 1000 / 700)); height: auto; touch-action: none; }
   </style>
 </head>
 <body>
-  <canvas id="game" width="1000" height="700"></canvas>
-  <div id="menu"><a href="tv.html">Mode multiplayer (butuh server)</a></div>
-  <script src="game.js"></script>
-  <script src="solo.js"></script>
+  <main class="menu" id="menu">
+    <h1>TANK ARENA</h1>
+    <p class="subtitle">Arena shooter dengan kontrol HP</p>
+    <button id="solo">MAIN SOLO VS BOT</button>
+    <a class="button" id="multi" href="tv.html">BUKA LAYAR TV + QR CONTROLLER</a>
+    <p class="help">Di mode TV, scan QR menggunakan HP. Analog kiri untuk jalan, analog kanan untuk arah tembak, tombol TEMBAK untuk menembak, dan DASH untuk melompat cepat.</p>
+  </main>
+  <div id="game-shell"><canvas id="game-canvas" width="1000" height="700"></canvas></div>
+  <script>
+    document.getElementById('solo').addEventListener('click', () => {
+      document.getElementById('menu').style.display = 'none';
+      document.getElementById('game-shell').style.display = 'grid';
+      const canvas = document.getElementById('game-canvas');
+      canvas.id = 'game';
+      const gameScript = document.createElement('script');
+      gameScript.src = 'game.js';
+      gameScript.onload = () => {
+        const soloScript = document.createElement('script');
+        soloScript.src = 'solo.js';
+        document.body.appendChild(soloScript);
+      };
+      document.body.appendChild(gameScript);
+    });
+  </script>
 </body>
 </html>

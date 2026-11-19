@@ -3,48 +3,41 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>Tank Arena - Controller</title>
+  <title>Tank Arena Controller</title>
   <style>
     * { box-sizing: border-box; }
-    html, body { margin: 0; height: 100%; background: #111; color: #eee; font-family: system-ui, sans-serif; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+    html, body { margin: 0; height: 100%; background: #111; color: #eee; font-family: system-ui, sans-serif; overflow: hidden; touch-action: none; user-select: none; }
     #join { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 12px; padding: 20px; }
     #join input { font-size: 18px; padding: 10px; width: 80%; max-width: 280px; border-radius: 6px; border: none; }
-    #join button, #retry { font-size: 18px; padding: 10px 24px; border-radius: 6px; border: none; background: #e74c3c; color: #fff; }
-    #err { color: #ff8a80; min-height: 20px; }
+    #join button, #retry { font-size: 18px; padding: 10px 24px; border-radius: 6px; border: none; background: #3498db; color: #fff; }
+    #err { color: #ff8a80; min-height: 20px; text-align: center; }
     #game { display: none; height: 100%; position: relative; }
-    .stick {
-      position: absolute; bottom: 30px; width: 150px; height: 150px; border-radius: 50%;
-      background: rgba(255,255,255,0.12); border: 2px solid rgba(255,255,255,0.3);
-    }
-    .knob {
-      position: absolute; width: 60px; height: 60px; border-radius: 50%;
-      background: rgba(255,255,255,0.5); left: 45px; top: 45px; pointer-events: none;
-    }
-    #left { left: 30px; }
-    #right { right: 30px; }
-    #fire {
-      position: absolute; bottom: 210px; right: 40px; width: 96px; height: 96px; border-radius: 50%;
-      background: #e74c3c; color: #fff; font-size: 18px; font-weight: bold; border: none;
-    }
+    .stick { position: absolute; bottom: 30px; width: 150px; height: 150px; border-radius: 50%; background: rgba(255,255,255,.12); border: 2px solid rgba(255,255,255,.3); }
+    .knob { position: absolute; width: 60px; height: 60px; border-radius: 50%; background: rgba(255,255,255,.5); left: 45px; top: 45px; pointer-events: none; }
+    #left { left: 24px; } #right { right: 24px; }
+    .action { position: absolute; border: 0; color: #fff; font-weight: 800; border-radius: 50%; }
+    #fire { bottom: 210px; right: 38px; width: 94px; height: 94px; background: #e74c3c; font-size: 16px; }
+    #dash { bottom: 215px; left: 54%; width: 72px; height: 72px; background: #9b59b6; font-size: 14px; }
     #status { position: absolute; top: 10px; left: 0; right: 0; text-align: center; font-size: 13px; color: #aaa; }
+    #life { position: absolute; top: 32px; left: 0; right: 0; text-align: center; color: #f1c40f; font-weight: bold; }
   </style>
 </head>
 <body>
   <div id="join">
-    <h2>Tank Arena</h2>
-    <div>Room: <span id="room-code"></span></div>
-    <input id="name" maxlength="12" placeholder="Nama kamu" />
-    <button id="join-btn">Masuk</button>
+    <h2>Tank Arena Controller</h2>
+    <div>Room: <strong id="room-code"></strong></div>
+    <input id="name" maxlength="12" placeholder="Nama kamu" autocomplete="off" />
+    <button id="join-btn">MASUK</button>
     <div id="err"></div>
   </div>
-
   <div id="game">
-    <div id="status">Kiri: gerak &middot; Kanan: bidik &middot; Tombol merah: tembak</div>
+    <div id="status">Kiri: jalan · Kanan: arah tembak · tahan TEMBAK</div>
+    <div id="life">Nyawa: 3</div>
     <div class="stick" id="left"><div class="knob" id="left-knob"></div></div>
     <div class="stick" id="right"><div class="knob" id="right-knob"></div></div>
-    <button id="fire">TEMBAK</button>
+    <button class="action" id="dash">DASH</button>
+    <button class="action" id="fire">TEMBAK</button>
   </div>
-
   <script src="/socket.io/socket.io.js"></script>
   <script src="/controller.js"></script>
 </body>
