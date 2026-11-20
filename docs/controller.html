@@ -3,44 +3,116 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#2f7de0" />
   <title>Tank Arena Controller</title>
+  <link rel="stylesheet" href="style.css" />
   <style>
-    html, body { margin: 0; height: 100%; background: radial-gradient(circle at 20% 0, #314b35, #111 70%); color: #eee; font-family: system-ui, sans-serif; overflow: hidden; touch-action: none; user-select: none; }
-    #join { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 12px; padding: 24px; text-align: center; }
-    #join h2 { color: #f1c40f; font-size: 28px; text-shadow: 3px 3px 0 #252b25; -webkit-text-stroke: 1px #252b25; animation: title-bob 2.5s ease-in-out infinite; }
-    #join input { font-size: 18px; padding: 12px; width: 80%; max-width: 280px; border: 4px solid #252b25; border-radius: 13px; background: #fff4d6; color: #263126; outline: none; }
-    #join button, #retry { font-size: 18px; padding: 12px 24px; border: 4px solid #252b25; border-radius: 13px; background: #3498db; color: #fff; box-shadow: 0 5px 0 #111a13; font-weight: 900; }
-    #join button:active { transform: translateY(3px); box-shadow: 0 2px 0 #111a13; }
-    #err { color: #ff8a80; min-height: 20px; text-align: center; font-weight: 700; }
-    #game { display: none; height: 100%; position: relative; }
-    .stick { position: absolute; bottom: 30px; width: 150px; height: 150px; border-radius: 50%; background: rgba(255,244,214,.16); border: 4px solid rgba(255,255,255,.5); box-shadow: inset 0 0 0 6px rgba(37,43,37,.25), 0 5px 0 rgba(0,0,0,.35); }
-    .knob { position: absolute; width: 60px; height: 60px; border-radius: 50%; background: #f1c40f; border: 4px solid #252b25; left: 45px; top: 45px; pointer-events: none; box-shadow: 0 4px 0 #111a13; }
-    #left { left: 24px; } #right { right: 24px; }
-    .action { position: absolute; border: 4px solid #252b25; color: #fff; font-weight: 900; border-radius: 50%; box-shadow: 0 6px 0 #111a13; }
-    .action:active { transform: translateY(4px); box-shadow: 0 2px 0 #111a13; }
-    #fire { bottom: 210px; right: 38px; width: 94px; height: 94px; background: #e74c3c; font-size: 16px; }
-    #dash { bottom: 215px; left: 54%; width: 72px; height: 72px; background: #9b59b6; font-size: 14px; }
-    #status { position: absolute; top: 10px; left: 0; right: 0; text-align: center; font-size: 13px; color: #fff; text-shadow: 1px 1px 0 #111; font-weight: 700; }
-    #life { position: absolute; top: 32px; left: 0; right: 0; text-align: center; color: #f1c40f; font-weight: 900; font-size: 18px; text-shadow: 2px 2px 0 #252b25; }
-    @keyframes title-bob { 0%, 100% { transform: rotate(-2deg) translateY(0); } 50% { transform: rotate(2deg) translateY(-5px); } }
+    html, body { overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+    :root { --me: var(--red); }
+
+    /* Layar masuk */
+    #join { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100%; gap: 14px; padding: 24px; text-align: center; }
+    #join .title { font-size: 46px; }
+    .join-card { width: min(340px, 100%); padding: 32px 18px 18px; display: grid; gap: 14px; }
+    .room-line { font-weight: 700; font-size: 14px; }
+    .room-line .badge { font-size: 12px; max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
+    #err { min-height: 20px; font-weight: 700; color: var(--red-dark); font-size: 14px; }
+    #join .mascot { transform: scale(.8); }
+
+    /* Layar controller */
+    #game { display: none; position: fixed; inset: 0; z-index: 1; }
+    .topbar {
+      position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+      display: flex; align-items: center; gap: 10px; padding: 6px 12px 6px 6px;
+      background: var(--cream); border: 4px solid var(--ink); border-radius: 18px; box-shadow: 0 5px 0 var(--ink);
+      white-space: nowrap;
+    }
+    .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--me); border: 4px solid var(--ink); box-shadow: inset 0 -4px 0 rgba(0,0,0,.2); }
+    #me-name { font-family: var(--font-title); font-size: 18px; letter-spacing: .5px; }
+    .hp { width: 90px; height: 14px; background: var(--ink); border-radius: 8px; padding: 2px; }
+    #hp-fill { height: 100%; width: 100%; border-radius: 6px; background: var(--green); transition: width .2s, background .2s; }
+    #life { color: var(--red); font-size: 18px; -webkit-text-stroke: 1px var(--ink); }
+
+    .stick {
+      position: absolute; bottom: 26px; width: 150px; height: 150px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,255,255,.28) 0 40%, rgba(255,255,255,.14) 41%);
+      border: 5px solid var(--ink); box-shadow: inset 0 0 0 5px rgba(255,255,255,.45), 0 6px 0 var(--ink);
+    }
+    .stick::after {
+      content: attr(data-label); position: absolute; left: 50%; bottom: -30px; transform: translateX(-50%);
+      font-family: var(--font-title); font-size: 13px; color: #fff; letter-spacing: 1px;
+      -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill; white-space: nowrap;
+    }
+    .knob {
+      position: absolute; width: 60px; height: 60px; border-radius: 50%; left: 40px; top: 40px; pointer-events: none;
+      background: radial-gradient(circle at 35% 30%, #fff8c8, var(--yellow) 45%, var(--yellow-dark));
+      border: 4px solid var(--ink); box-shadow: 0 5px 0 var(--ink);
+    }
+    #right .knob { background: radial-gradient(circle at 35% 30%, #d3ecff, var(--blue) 45%, var(--blue-dark)); }
+    #left { left: 22px; } #right { right: 22px; }
+
+    .action {
+      position: absolute; display: grid; place-items: center; padding: 0; color: #fff;
+      font-family: var(--font-title); letter-spacing: 1px; border: 5px solid var(--ink); border-radius: 50%;
+      -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill;
+      transition: transform .08s, box-shadow .08s;
+    }
+    .action::before { content: ''; position: absolute; top: 8%; left: 18%; width: 64%; height: 30%; border-radius: 50%; background: rgba(255,255,255,.4); }
+    .action span { position: relative; }
+    #fire {
+      bottom: 206px; right: 34px; width: 98px; height: 98px; font-size: 17px;
+      background: radial-gradient(circle at 50% 35%, #ff98a2, var(--red) 55%, var(--red-dark));
+      box-shadow: inset 0 -6px 0 var(--red-dark), 0 7px 0 var(--ink);
+    }
+    #dash {
+      bottom: 206px; left: 34px; width: 82px; height: 82px; font-size: 15px;
+      background: radial-gradient(circle at 50% 35%, #d2b6ff, var(--purple) 55%, var(--purple-dark));
+      box-shadow: inset 0 -6px 0 var(--purple-dark), 0 7px 0 var(--ink);
+    }
+    .action.pressed { transform: translateY(6px) scale(.96); box-shadow: inset 0 -2px 0 rgba(0,0,0,.3), 0 1px 0 var(--ink); }
+    #dash.cooldown { filter: grayscale(.8) brightness(.85); }
+
+    #overlay {
+      position: absolute; inset: 0; display: none; place-items: center; background: rgba(27,21,48,.55);
+    }
+    #overlay .panel { padding: 22px 26px; text-align: center; }
+    #overlay .title { font-size: 40px; color: var(--red); }
+
+    /* Kalau HP tegak, kontrol tetap bisa dipakai tapi kasih saran putar. */
+    #rotate { display: none; position: absolute; top: 72px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 13px; }
+    @media (orientation: portrait) { #rotate { display: block; } }
   </style>
 </head>
-<body>
+<body class="sky">
+  <div class="clouds"><div class="cloud"></div><div class="cloud"></div><div class="cloud"></div></div>
+
   <div id="join">
-    <h2>Tank Arena Controller</h2>
-    <div>Room: <strong id="room-code"></strong></div>
-    <input id="name" maxlength="12" placeholder="Nama kamu" autocomplete="off" />
-    <button id="join-btn">MASUK</button>
-    <div id="err"></div>
+    <div class="mascot"><div class="tread"></div><div class="body"></div><div class="barrel"></div><div class="turret"></div><div class="eye l"></div><div class="eye r"></div></div>
+    <h1 class="title wobble">TANK ARENA</h1>
+    <section class="panel join-card pop-in">
+      <div class="panel-header">GABUNG ROOM</div>
+      <div class="room-line">Room <span class="badge" id="room-code">-</span></div>
+      <input class="input" id="name" maxlength="12" placeholder="Nama kamu" autocomplete="off" />
+      <button class="btn" id="join-btn" disabled>🚀 MASUK</button>
+      <div id="err"></div>
+    </section>
   </div>
+
   <div id="game">
-    <div id="status">Kiri: jalan · Kanan: arah tembak · tahan TEMBAK</div>
-    <div id="life">Nyawa: 3</div>
-    <div class="stick" id="left"><div class="knob" id="left-knob"></div></div>
-    <div class="stick" id="right"><div class="knob" id="right-knob"></div></div>
-    <button class="action" id="dash">DASH</button>
-    <button class="action" id="fire">TEMBAK</button>
+    <div class="topbar">
+      <div class="avatar"></div>
+      <span id="me-name">Kamu</span>
+      <div class="hp"><div id="hp-fill"></div></div>
+      <span id="life">♥♥♥</span>
+    </div>
+    <span class="badge" id="rotate">📱↻ Putar HP biar lebih enak</span>
+    <div class="stick" id="left" data-label="JALAN"><div class="knob" id="left-knob"></div></div>
+    <div class="stick" id="right" data-label="BIDIK"><div class="knob" id="right-knob"></div></div>
+    <button class="action" id="dash"><span>DASH</span></button>
+    <button class="action" id="fire"><span>TEMBAK</span></button>
+    <div id="overlay"><div class="panel"><h2 class="title">KO!</h2><p><b>Nyawa habis.</b> Tonton sampai ronde selesai.</p></div></div>
   </div>
+
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="controller.js"></script>
 </body>

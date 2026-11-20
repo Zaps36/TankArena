@@ -4,42 +4,90 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Tank Arena - Layar Utama</title>
+  <link rel="stylesheet" href="style.css" />
   <style>
-    html, body { margin: 0; height: 100%; background: #142019; color: #eee; font-family: system-ui, sans-serif; overflow: hidden; }
-    body { display: flex; align-items: center; justify-content: center; }
-    #wrap { position: relative; filter: drop-shadow(0 8px 0 #0a100b); }
-    canvas { background: #9bd477; display: block; max-width: 100vw; max-height: 100vh; border: 6px solid #17251c; border-radius: 18px; }
-    #join { position: absolute; top: 16px; left: 16px; background: #fff4d6; color: #263126; border: 5px solid #252b25; padding: 11px; border-radius: 17px; text-align: center; width: 184px; box-shadow: 0 7px 0 #111a13; animation: lobby-bob 3s ease-in-out infinite; overflow: hidden; }
-    #join::before, #join::after { content: ''; position: absolute; border-radius: 50%; z-index: -1; opacity: .7; animation: bubble 4s ease-in-out infinite alternate; }
-    #join::before { width: 70px; height: 70px; background: #f1c40f; top: -35px; left: -25px; }
-    #join::after { width: 55px; height: 55px; background: #e67e22; bottom: -30px; right: -20px; animation-delay: -2s; }
-    #qr { background: #fff; padding: 5px; border: 3px solid #252b25; border-radius: 10px; width: 150px; height: 150px; image-rendering: pixelated; }
-    #join .code { font-size: 17px; font-weight: 900; letter-spacing: 1px; margin-top: 6px; }
-    #join .hint { font-size: 11px; color: #536052; margin-top: 4px; line-height: 1.3; font-weight: 700; }
-    #loading { color: #2980b9; font-size: 12px; margin-top: 5px; font-weight: 800; }
-    #scores { position: absolute; top: 16px; right: 16px; background: #fff4d6; color: #263126; border: 5px solid #252b25; padding: 10px 14px; border-radius: 17px; min-width: 190px; box-shadow: 0 7px 0 #111a13; }
-    #scores h3 { margin: 0 0 6px; font-size: 14px; color: #e67e22; text-shadow: 1px 1px 0 #252b25; }
-    #scores div { font-size: 14px; margin: 3px 0; font-weight: 800; }
-    #notice { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); background: #f1c40f; color: #252b25; border: 4px solid #252b25; box-shadow: 0 5px 0 #111a13; padding: 7px 14px; border-radius: 14px; font-size: 14px; display: none; white-space: nowrap; font-weight: 900; }
-    @keyframes lobby-bob { 0%, 100% { transform: rotate(-1deg) translateY(0); } 50% { transform: rotate(1deg) translateY(-6px); } }
-    @keyframes bubble { from { transform: translate(0, 0) rotate(0); } to { transform: translate(25px, 12px) rotate(25deg); } }
+    body { overflow: hidden; }
+    .layout { position: relative; z-index: 1; display: flex; gap: 22px; align-items: center; justify-content: center; height: 100%; padding: 22px; }
+    .sidebar { width: 250px; flex: none; display: flex; flex-direction: column; gap: 26px; }
+    .stage { position: relative; flex: 1; max-width: calc((100vh - 44px) * 1000 / 700); }
+    .stage canvas { display: block; width: 100%; height: auto; border-radius: 26px; box-shadow: 0 8px 0 var(--ink), 0 22px 40px rgba(0,0,0,.3); }
+
+    .logo { font-size: 40px; text-align: center; }
+    .join { padding: 30px 16px 16px; text-align: center; }
+    .qr-wrap { position: relative; display: inline-block; padding: 8px; background: #fff; border: 4px solid var(--ink); border-radius: 18px; box-shadow: 0 5px 0 var(--ink); }
+    .qr-wrap::before, .qr-wrap::after {
+      content: ''; position: absolute; width: 26px; height: 26px; border: 5px solid var(--yellow); border-radius: 6px;
+      animation: corner 1.4s ease-in-out infinite;
+    }
+    .qr-wrap::before { top: -12px; left: -12px; border-right: none; border-bottom: none; }
+    .qr-wrap::after { bottom: -12px; right: -12px; border-left: none; border-top: none; }
+    @keyframes corner { 50% { transform: scale(1.18); } }
+    #qr { display: block; width: 170px; height: 170px; image-rendering: pixelated; border-radius: 8px; }
+    .qr-placeholder { width: 170px; height: 170px; display: grid; place-items: center; font-size: 46px; animation: spin 1.2s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .room { margin-top: 14px; font-size: 14px; font-weight: 700; }
+    .room .badge { font-size: 13px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
+    #loading { margin-top: 10px; font-size: 13px; font-weight: 700; color: var(--blue-dark); }
+
+    .slots { padding: 28px 12px 12px; display: grid; gap: 9px; }
+    .slot {
+      display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+      border: 3px dashed rgba(27,21,48,.35); border-radius: 14px; font-weight: 700; color: rgba(27,21,48,.5); min-height: 46px;
+    }
+    .slot .dot { width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--ink); background: #ddd; flex: none; }
+    .slot.filled { border: 3px solid var(--ink); background: #fff; color: var(--ink); box-shadow: 0 3px 0 var(--ink); animation: pop-in .4s cubic-bezier(.3,1.6,.5,1) both; }
+    .slot.out { opacity: .5; }
+    .slot .name { flex: 1; font-family: var(--font-title); font-size: 16px; letter-spacing: .5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .slot .stats { text-align: right; font-size: 12px; line-height: 1.2; }
+    .slot .hearts { color: var(--red); font-size: 14px; }
+    .waiting { animation: pulse 1.6s ease-in-out infinite; }
+    @keyframes pulse { 50% { opacity: .45; } }
+
+    #toast {
+      position: fixed; top: 18px; left: 50%; z-index: 10; transform: translate(-50%, -140%);
+      transition: transform .35s cubic-bezier(.3,1.6,.5,1);
+      font-family: var(--font-title); font-size: 20px; letter-spacing: .5px;
+    }
+    #toast.show { transform: translate(-50%, 0); }
+    #toast .btn { width: auto; padding: 9px 18px; font-size: 18px; pointer-events: none; }
+
+    @media (max-width: 860px) {
+      .layout { flex-direction: column; overflow: auto; height: auto; min-height: 100%; }
+      .sidebar { width: 100%; max-width: 420px; }
+      .stage { width: 100%; max-width: none; }
+    }
   </style>
 </head>
-<body>
-  <div id="wrap">
-    <canvas id="game" width="1000" height="700"></canvas>
-    <div id="join">
-      <img id="qr" alt="QR controller HP" />
-      <div class="code" id="code">Membuat room...</div>
-      <div class="hint">Scan QR ini dengan HP.<br />Setiap HP menjadi satu tank.</div>
-      <div id="loading">Menunggu koneksi PeerJS</div>
-    </div>
-    <div id="scores"><h3>Skor</h3><div id="score-list">Belum ada pemain</div></div>
-    <div id="notice"></div>
+<body class="sky">
+  <div class="clouds"><div class="cloud"></div><div class="cloud"></div><div class="cloud"></div><div class="cloud"></div></div>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <h1 class="title logo wobble">TANK ARENA</h1>
+      <section class="panel join">
+        <div class="panel-header">SCAN UNTUK MAIN</div>
+        <div class="qr-wrap bob">
+          <img id="qr" alt="QR controller HP" hidden />
+          <div class="qr-placeholder" id="qr-placeholder">⚙️</div>
+        </div>
+        <div class="room">Room <span class="badge" id="code">...</span></div>
+        <div id="loading">Menyiapkan room...</div>
+      </section>
+      <section class="panel slots" id="slots">
+        <div class="panel-header" style="background: var(--orange); box-shadow: inset 0 -4px 0 #c9621a, 0 4px 0 var(--ink);">PEMAIN</div>
+      </section>
+    </aside>
+    <main class="stage">
+      <canvas id="game" width="1000" height="700"></canvas>
+    </main>
   </div>
+
+  <div id="toast"><span class="btn yellow" id="toast-text"></span></div>
+
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="vendor/qrcode-generator.js"></script>
   <script src="game.js"></script>
+  <script src="render.js"></script>
   <script src="tv.js"></script>
 </body>
 </html>
