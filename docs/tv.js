@@ -263,6 +263,9 @@
     requestAnimationFrame(frame);
   }
 
+  // Hanya-baca, untuk debug dari console browser.
+  window.TankArenaDebug = { snapshot: () => TG.snapshot(state), humans: () => humans.slice() };
+
   window.addEventListener('beforeunload', () => host.destroy());
   requestAnimationFrame((now) => {
     last = now;
