@@ -150,8 +150,9 @@
       const tank = m.game.players.get(id);
       if (!tank) return;
       TG.setInput(m.game, id, input || {});
-      // Di luar fase main, tembakan yang ditekan tidak disimpan untuk nanti.
-      if (m.phase !== 'play' && tank.input.shot !== null) tank.lastShot = tank.input.shot;
+      // Saat intro, hitung mundur, dan hasil ronde, tembakan dibuang (tidak disimpan untuk nanti).
+      // Di lobby tembakan tetap jalan supaya pemain bisa latihan.
+      if (m.phase !== 'play' && m.phase !== 'lobby' && tank.input.shot !== null) tank.lastShot = tank.input.shot;
     };
 
     function rankRound() {

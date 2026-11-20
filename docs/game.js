@@ -10,6 +10,7 @@ const BULLET_SPEED = 560; // px per detik
 const BULLET_LIFE = 1.5; // detik
 const BULLET_RADIUS = 6;
 const FIRE_COOLDOWN = 1.2; // detik
+const SHOT_BUFFER = 0.35; // detik: tembakan sedikit lebih awal dari cooldown tetap diterima
 const MAX_HP = 100;
 const BULLET_DAMAGE = 50; // 2 tembakan = 1 nyawa
 const RESPAWN_TIME = 3; // detik
@@ -85,6 +86,7 @@ function addPlayer(game, id, name, slot) {
     dashCooldown: 0,
     lastDash: false,
     lastShot: null, // nilai `shot` terakhir yang sudah diproses
+    pendingShot: null, // tembakan yang menunggu cooldown habis
     input: emptyInput(),
   };
   game.players.set(id, player);
@@ -226,6 +228,7 @@ function step(game, dt) {
       }
       p.lastDash = !!input.dash;
       if (input.shot !== null) p.lastShot = input.shot; // tembakan saat mati diabaikan
+      p.pendingShot = null;
       continue;
     }
 
@@ -261,24 +264,36 @@ function step(game, dt) {
 
     // Tembakan sekali-lepas dari HP: `shot` naik satu setiap kali stik serang dilepas.
     // sx/sy = arah bidik; (0,0) berarti ketuk = bidik otomatis ke musuh terdekat.
-    let wantShot = false;
-    let shotAngle = p.angle;
     if (input.shot !== null && input.shot !== p.lastShot) {
       p.lastShot = input.shot;
-      wantShot = true;
-      shotAngle = Math.hypot(input.sx, input.sy) > 0.2 ? Math.atan2(input.sy, input.sx) : autoAimAngle(game, p);
-    } else if (fire) {
-      // Tahan tembak (keyboard, mouse, bot): menembak setiap cooldown habis.
-      wantShot = true;
+      if (p.cooldown <= SHOT_BUFFER) {
+        // Tembakan yang datang sedikit sebelum cooldown habis disimpan, lalu
+        // ditembakkan begitu siap (jam HP dan TV berbeda sebesar jeda jaringan).
+        p.pendingShot = { sx: input.sx, sy: input.sy, ttl: SHOT_BUFFER + 0.15 };
+      } else {
+        events.push({ type: 'dry', id: p.id });
+      }
+    }
+    if (p.pendingShot) {
+      p.pendingShot.ttl -= dt;
+      if (p.pendingShot.ttl <= 0) p.pendingShot = null;
     }
 
-    if (wantShot && p.cooldown <= 0) {
+    let shotAngle = null;
+    if (p.cooldown <= 0 && p.pendingShot) {
+      const s = p.pendingShot;
+      p.pendingShot = null;
+      shotAngle = Math.hypot(s.sx, s.sy) > 0.2 ? Math.atan2(s.sy, s.sx) : autoAimAngle(game, p);
+    } else if (p.cooldown <= 0 && fire) {
+      // Tahan tembak (keyboard, mouse, bot): menembak setiap cooldown habis.
+      shotAngle = p.angle;
+    }
+
+    if (shotAngle !== null) {
       p.angle = shotAngle;
       spawnBullet(game, p, shotAngle);
       p.cooldown = FIRE_COOLDOWN;
       events.push({ type: 'fire', id: p.id, angle: shotAngle });
-    } else if (wantShot && input.shot !== null && p.cooldown > 0 && !fire) {
-      events.push({ type: 'dry', id: p.id });
     }
   }
 

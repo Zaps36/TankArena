@@ -96,8 +96,26 @@
       if (msg.t === 'join') {
         entry.via = via;
         entry.conn = conn || null;
+      } else if (via === 'rtc' && conn && entry.via === 'relay') {
+        // HP sudah mengirim lewat jalur langsung: balas lewat jalur langsung juga.
+        entry.via = 'rtc';
+        entry.conn = conn;
       }
       entry.lastSeen = Date.now();
+      if (msg.t === 'ping') {
+        // Balas lewat jalur yang sama dengan ping supaya waktu bolak-baliknya akurat.
+        const pong = { t: 'pong', ts: msg.ts };
+        if (via === 'rtc' && conn && conn.open) {
+          try {
+            conn.send(pong);
+          } catch (e) {
+            // abaikan
+          }
+        } else if (via === 'relay' && broker && broker.connected) {
+          broker.publish(downTopic(msg.c), JSON.stringify(pong), { qos: 0 });
+        }
+        return;
+      }
       if (msg.t === 'leave') {
         drop(msg.c);
         return;
@@ -223,8 +241,10 @@
     let joinTimer = null;
     let lastHostMsg = 0;
 
+    const rtt = { rtc: null, relay: null }; // waktu bolak-balik terakhir (ms)
+
     function status() {
-      if (handlers.onStatus) handlers.onStatus({ rtc: st.rtc, relay: st.relay, active });
+      if (handlers.onStatus) handlers.onStatus({ rtc: st.rtc, relay: st.relay, active, ping: active ? rtt[active] : null });
     }
 
     const rtcOpen = () => !!(conn && conn.open);
@@ -250,10 +270,17 @@
     function receive(msg, via) {
       if (!msg || typeof msg.t !== 'string') return;
       lastHostMsg = Date.now();
+      if (msg.t === 'pong' && typeof msg.ts === 'number') {
+        rtt[via] = Math.round(performance.now() - msg.ts);
+        status();
+        return;
+      }
       if (msg.t === 'welcome') {
         active = via;
         clearTimeout(joinTimer);
         status();
+        // Masuk lewat relay padahal jalur langsung sudah terbuka: pindah ke jalur langsung.
+        if (via === 'relay' && rtcOpen() && joinMsg) sendVia('rtc', joinMsg);
       }
       handlers.onMessage(msg, via);
     }
@@ -291,6 +318,11 @@
       if (!active) return;
       if (!sendVia(active, msg)) sendVia(active === 'rtc' ? 'relay' : 'rtc', msg);
     }
+
+    // Ukur ping setiap 2 detik lewat jalur aktif.
+    const pinger = setInterval(() => {
+      if (active) sendVia(active, { t: 'ping', ts: performance.now() });
+    }, 2000);
 
     // Jika TV diam terlalu lama setelah bergabung, gabung ulang lewat relay.
     const watchdog = setInterval(() => {
@@ -372,6 +404,7 @@
       transport: () => active,
       destroy() {
         clearInterval(watchdog);
+        clearInterval(pinger);
         clearTimeout(joinTimer);
         if (peer) peer.destroy();
         if (broker) broker.end(true);

@@ -113,9 +113,10 @@
     chip.className = `chip ${cls}`;
   }
 
-  function paintLink(active) {
-    linkEl.textContent = active === 'relay' ? 'RELAY' : active === 'rtc' ? 'LANGSUNG' : 'MENYAMBUNG';
-    linkEl.className = active === 'relay' ? 'relay' : active ? '' : 'lost';
+  function paintLink(active, ping) {
+    const name = active === 'relay' ? 'RELAY' : active === 'rtc' ? 'LANGSUNG' : 'MENYAMBUNG';
+    linkEl.textContent = active && typeof ping === 'number' ? `${name} ${ping}ms` : name;
+    linkEl.className = active === 'relay' || (typeof ping === 'number' && ping > 150) ? 'relay' : active ? '' : 'lost';
   }
 
   const net = TankNet.connectClient(room, {
@@ -128,7 +129,7 @@
         if (usable) message('Siap! Isi nama lalu tekan MASUK.');
         else if (s.rtc !== 'connecting' && s.relay !== 'connecting') message('Tidak bisa tersambung ke internet. Cek koneksi HP lalu muat ulang.', true);
       }
-      if (inGame) paintLink(s.active);
+      if (inGame) paintLink(s.active, s.ping);
     },
     onRetry(attempt) {
       if (!inGame) message(`Belum ada jawaban dari layar utama, mencoba lagi (${attempt})...`);
@@ -194,7 +195,8 @@
     lifeEl.innerHTML = [0, 1, 2].map((i) => `<span class="heart${i < s.lives ? '' : ' empty'}"></span>`).join('');
     ptsEl.textContent = `${s.total} poin`;
     dashBtn.classList.toggle('cooldown', s.dash > 0);
-    pad.syncCooldown(s.fire);
+    if (prev && prev.phase !== s.phase && (s.phase === 'intro' || s.phase === 'lobby')) pad.resetCooldown();
+    else pad.syncCooldown(s.fire);
     if (s.phase === 'play' && lastHp !== null && s.hp < lastHp) TankTouch.vibrate(s.hp <= 0 ? [80, 40, 120] : 40);
     lastHp = s.hp;
 

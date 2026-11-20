@@ -9,6 +9,7 @@
 
   const TAP_DRAG = 0.3; // geser kurang dari ini (relatif radius) dianggap ketuk
   const AIM_DEADZONE = 0.2;
+  const EARLY_MS = 300; // harus lebih kecil dari SHOT_BUFFER di game.js (350 ms)
 
   function vibrate(pattern) {
     if (navigator.vibrate) navigator.vibrate(pattern);
@@ -128,7 +129,8 @@
           changed('aim');
           return;
         }
-        if (performance.now() < readyAt) {
+        // Boleh lepas sedikit lebih awal; TV menyimpan tembakan sampai cooldown habis.
+        if (performance.now() < readyAt - EARLY_MS) {
           el.attack.classList.remove('denied');
           void el.attack.offsetWidth;
           el.attack.classList.add('denied');
@@ -139,7 +141,8 @@
         input.shot += 1;
         input.sx = dragged ? v.x / len : 0;
         input.sy = dragged ? v.y / len : 0;
-        startCooldownRing(options.cooldown);
+        // Cincin cooldown dimulai saat tembakan benar-benar keluar (sisa cooldown + 1.2 s).
+        startCooldownRing(Math.max(0, readyAt - performance.now()) / 1000 + options.cooldown);
         vibrate(15);
         changed('shot');
       },
@@ -163,10 +166,15 @@
 
     return {
       input,
-      // Sinkronkan cincin cooldown dengan status dari TV (misalnya setelah ronde baru).
+      // Cincin cooldown dihitung lokal di HP supaya langsung terlihat saat menembak.
+      // Status dari TV hanya dipakai untuk memperpanjang, tidak pernah memotong,
+      // karena status TV selalu tertinggal sebesar jeda jaringan.
       syncCooldown(seconds) {
         const left = Math.max(0, readyAt - performance.now()) / 1000;
-        if (seconds <= 0.05 && left > 0.25) startCooldownRing(0);
+        if (seconds > left + 0.3) startCooldownRing(seconds);
+      },
+      resetCooldown() {
+        startCooldownRing(0);
       },
     };
   }
