@@ -290,12 +290,12 @@ html, body {
 .ov-tank i:first-child { left: 30%; } .ov-tank i:last-child { right: 30%; }
 
 /* HUD selama ronde */
-.ov-hud { position: absolute; top: 2.2cqh; left: 2cqw; display: flex; gap: .5em; }
+.ov-hud { position: absolute; bottom: 2.4cqh; left: 50%; transform: translateX(-50%); display: flex; gap: .5em; white-space: nowrap; }
 .ov-pill { font-family: var(--font-title); font-size: 1.15em; letter-spacing: .5px; padding: .25em .7em; background: var(--cream); border: 3px solid var(--ink); border-radius: 12px; box-shadow: 0 3px 0 var(--ink); color: var(--ink); }
 .ov-pill b { color: var(--orange); -webkit-text-stroke: 1px var(--ink); font-weight: 400; }
 .ov-timer.hurry { background: var(--red); color: #fff; -webkit-text-stroke: 1.5px var(--ink); paint-order: stroke fill; animation: hurry .5s ease-in-out infinite alternate; }
 @keyframes hurry { to { transform: scale(1.12); } }
-.ov-mini { position: absolute; top: 2.2cqh; right: 2cqw; display: flex; gap: .35em; padding: .25em .5em; background: var(--cream); border: 3px solid var(--ink); border-radius: 12px; box-shadow: 0 3px 0 var(--ink); }
+.ov-mini { position: absolute; top: 2.2cqh; left: 50%; transform: translateX(-50%) translateY(2.4em); display: flex; gap: .35em; padding: .25em .5em; background: var(--cream); border: 3px solid var(--ink); border-radius: 12px; box-shadow: 0 3px 0 var(--ink); }
 .ov-mini-row { display: flex; align-items: center; gap: .25em; font-family: var(--font-title); font-size: 1.05em; color: var(--ink); }
 .ov-mini-row b { font-weight: 400; }
 
