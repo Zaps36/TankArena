@@ -264,7 +264,7 @@ html, body {
   .stick .knob { width: 52px; height: 52px; left: 32px; top: 32px; }
   .stick.attack { width: 146px; height: 146px; }
   .stick.attack .knob { width: 64px; height: 64px; left: 36px; top: 36px; }
-  .action.dash { width: 66px; height: 66px; bottom: calc(128px + env(safe-area-inset-bottom)); right: calc(184px + env(safe-area-inset-right)); font-size: 12px; }
+  .action.dash { width: 66px; height: 66px; bottom: calc(160px + env(safe-area-inset-bottom)); right: calc(178px + env(safe-area-inset-right)); font-size: 12px; }
 }
 
 /* Status koneksi kecil. */
