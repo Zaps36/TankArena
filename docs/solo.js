@@ -1,44 +1,44 @@
+// Mode main di satu perangkat (HP atau laptop) melawan 3 bot, dengan sistem ronde.
 (() => {
   const TG = window.TankGame;
   const canvas = document.getElementById('game');
-  let renderer = window.TankRender.createRenderer(canvas);
-
-  const TICK = 1 / 60;
-  const BOT_COUNT = 3;
   const HUMAN_ID = 'you';
-  const STICK_RADIUS = 60; // piksel layar
+  const TICK = 1 / 60;
 
-  let state = null;
-  let result = null; // null, 'win', atau 'lose'
+  const match = TankMatch.create({ mode: 'bot', botCount: 3 });
+  match.add(HUMAN_ID, 'Kamu', false);
+  let renderer = TankRender.createRenderer(canvas);
+  let rendererRound = 0;
   let acc = 0;
   let last = performance.now();
 
-  const keys = new Set();
-  const mouse = { x: 0, y: 0, active: false, down: false };
-  const touch = { move: null, aim: null }; // { id, sx, sy, dx, dy }
+  const overlay = TankOverlay.create(document.getElementById('stage'), {
+    showStandings: true,
+    onStart: () => match.start(),
+    onRounds: (n) => match.setRounds(n),
+    onPlayAgain: () => match.playAgain(),
+    onLobby: () => match.toLobby(),
+    lobbyText: () => (pad
+      ? 'Kamu lawan 3 bot. Kiri: jalan. Kanan: geser bidik lalu lepas, atau ketuk untuk tembak otomatis.'
+      : 'Kamu lawan 3 bot. WASD jalan, mouse bidik, klik/Spasi tembak, Shift dash.'),
+  });
 
-  // Analog di layar (mode main di HP). Hanya aktif di perangkat sentuh.
+  // ------------------------------------------------- kontrol layar sentuh
   const padEl = document.getElementById('pad');
-  const pad = padEl && !padEl.hidden && window.TankTouch
-    ? window.TankTouch.attach({
+  const pad = padEl && !padEl.hidden
+    ? TankTouch.attach({
       left: document.getElementById('left'),
       leftKnob: document.getElementById('left-knob'),
-      right: document.getElementById('right'),
-      rightKnob: document.getElementById('right-knob'),
-      fire: document.getElementById('fire'),
+      attack: document.getElementById('attack'),
+      attackKnob: document.getElementById('attack-knob'),
       dash: document.getElementById('dash'),
-    })
+    }, { cooldown: TG.FIRE_COOLDOWN })
     : null;
 
-  function newGame() {
-    state = TG.createGame();
-    TG.addPlayer(state, HUMAN_ID, 'Kamu');
-    for (let i = 1; i <= BOT_COUNT; i++) TG.addPlayer(state, `bot${i}`, `Bot ${i}`);
-    renderer = window.TankRender.createRenderer(canvas);
-    result = null;
-  }
+  // ---------------------------------------------- keyboard dan mouse
+  const keys = new Set();
+  const mouse = { x: 0, y: 0, active: false, down: false };
 
-  // Ubah koordinat layar (piksel) menjadi koordinat dunia game.
   function toWorld(clientX, clientY) {
     const rect = canvas.getBoundingClientRect();
     return {
@@ -47,157 +47,97 @@
     };
   }
 
-  function humanInput(me) {
+  function humanInput() {
+    const me = match.game.players.get(HUMAN_ID);
     let mx = 0;
     let my = 0;
     if (keys.has('KeyW') || keys.has('ArrowUp')) my -= 1;
     if (keys.has('KeyS') || keys.has('ArrowDown')) my += 1;
     if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
     if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
+    const input = { mx, my, ax: 0, ay: 0, aiming: false, fire: keys.has('Space') || mouse.down, dash: keys.has('ShiftLeft') || keys.has('ShiftRight') };
 
-    let aimX = 0;
-    let aimY = 0;
-    let aiming = false;
-    let fire = keys.has('Space') || mouse.down;
-    const dash = keys.has('ShiftLeft') || keys.has('ShiftRight');
-
-    if (touch.move) {
-      mx = touch.move.dx;
-      my = touch.move.dy;
-    }
-
-    if (touch.aim) {
-      aimX = touch.aim.dx;
-      aimY = touch.aim.dy;
-      aiming = Math.hypot(aimX, aimY) > 0.3;
-      fire = true;
-    } else if (mouse.active && me) {
-      aimX = mouse.x - me.x;
-      aimY = mouse.y - me.y;
-      const len = Math.hypot(aimX, aimY);
-      if (len > 10) {
-        aimX /= len;
-        aimY /= len;
-        aiming = true;
-      }
+    if (mouse.active && me) {
+      const dx = mouse.x - me.x;
+      const dy = mouse.y - me.y;
+      const len = Math.hypot(dx, dy);
+      if (len > 10) Object.assign(input, { ax: dx / len, ay: dy / len, aiming: true });
     }
 
     if (pad) {
-      if (Math.hypot(pad.mx, pad.my) > 0.05) {
-        mx = pad.mx;
-        my = pad.my;
+      const p = pad.input;
+      if (Math.hypot(p.mx, p.my) > 0.05) {
+        input.mx = p.mx;
+        input.my = p.my;
       }
-      if (pad.aiming) {
-        aimX = pad.ax;
-        aimY = pad.ay;
-        aiming = true;
-      }
-      return { mx, my, ax: aimX, ay: aimY, aiming, fire: fire || pad.fire, dash: dash || pad.dash };
+      if (p.aiming) Object.assign(input, { ax: p.ax, ay: p.ay, aiming: true });
+      input.dash = input.dash || p.dash;
+      input.shot = p.shot;
+      input.sx = p.sx;
+      input.sy = p.sy;
     }
-
-    return { mx, my, ax: aimX, ay: aimY, aiming, fire, dash };
+    return input;
   }
 
-  function checkResult() {
-    if (result) return;
-    const me = state.players.get(HUMAN_ID);
-    if (me && me.eliminated) {
-      result = 'lose';
-      return;
+  // ---------------------------------------------------------------- loop
+  function tick() {
+    match.setInput(HUMAN_ID, humanInput());
+    const events = match.update(TICK);
+    if (match.round !== rendererRound && match.phase === 'intro') {
+      rendererRound = match.round;
+      renderer = TankRender.createRenderer(canvas);
     }
-    const botsLeft = [...state.players.values()].some((p) => p.id !== HUMAN_ID && !p.eliminated);
-    if (!botsLeft) result = 'win';
-  }
-
-  function tick(dt) {
-    for (let i = 1; i <= BOT_COUNT; i++) {
-      const id = `bot${i}`;
-      TG.setInput(state, id, TG.botInput(state, id));
+    if (match.phase === 'lobby' && rendererRound !== 0) {
+      rendererRound = 0;
+      renderer = TankRender.createRenderer(canvas);
     }
-    const me = state.players.get(HUMAN_ID);
-    TG.setInput(state, HUMAN_ID, result ? {} : humanInput(me));
-    renderer.onEvents(TG.step(state, dt));
-    checkResult();
-  }
-
-  function banner() {
-    if (result === 'win') return { title: 'MENANG!', subtitle: 'Semua bot tumbang. Tekan R atau ketuk untuk main lagi.', color: '#4cd964' };
-    if (result === 'lose') return { title: 'KALAH!', subtitle: 'Nyawa habis. Tekan R atau ketuk untuk coba lagi.', color: '#ff4d5e' };
-    return null;
+    renderer.onEvents(events);
+    if (pad && events.some((e) => e.type === 'impact' && e.kind === 'tank' && e.target === HUMAN_ID)) TankTouch.vibrate(40);
   }
 
   function frame(now) {
     acc += Math.min(0.1, (now - last) / 1000);
     last = now;
-    while (acc >= TICK) {
-      tick(TICK);
+    let steps = 0;
+    while (acc >= TICK && steps < 6) {
+      tick();
       acc -= TICK;
+      steps++;
     }
-    renderer.draw(TG.snapshot(state), { hud: true, highlightId: HUMAN_ID, banner: banner() });
+    if (steps === 6) acc = 0;
+    const playing = match.phase === 'play' || match.phase === 'countdown' || match.phase === 'intro' || match.phase === 'lobby';
+    renderer.draw(TG.snapshot(match.game), { hud: false, highlightId: playing ? HUMAN_ID : null });
+    overlay.render(match);
     requestAnimationFrame(frame);
   }
 
-  // Keyboard
   window.addEventListener('keydown', (e) => {
     if (e.code === 'Space') e.preventDefault();
-    if (e.code === 'KeyR' && result) newGame();
+    if (e.code === 'Enter') {
+      if (match.phase === 'lobby') match.start();
+      else if (match.phase === 'final') match.playAgain();
+    }
     keys.add(e.code);
   });
   window.addEventListener('keyup', (e) => keys.delete(e.code));
+  window.addEventListener('blur', () => {
+    keys.clear();
+    mouse.down = false;
+  });
 
-  // Mouse dan sentuh
   canvas.addEventListener('pointerdown', (e) => {
-    if (result) {
-      newGame();
-      return;
-    }
-    if (e.pointerType === 'mouse') {
-      const p = toWorld(e.clientX, e.clientY);
-      mouse.x = p.x;
-      mouse.y = p.y;
-      mouse.active = true;
-      mouse.down = true;
-      return;
-    }
-    const world = toWorld(e.clientX, e.clientY);
-    const anchor = { id: e.pointerId, sx: e.clientX, sy: e.clientY, dx: 0, dy: 0 };
-    if (world.x < canvas.width / 2 && !touch.move) touch.move = anchor;
-    else if (!touch.aim) touch.aim = anchor;
-    canvas.setPointerCapture(e.pointerId);
+    if (e.pointerType !== 'mouse') return;
+    Object.assign(mouse, toWorld(e.clientX, e.clientY), { active: true, down: true });
   });
-
   canvas.addEventListener('pointermove', (e) => {
-    if (e.pointerType === 'mouse') {
-      const p = toWorld(e.clientX, e.clientY);
-      mouse.x = p.x;
-      mouse.y = p.y;
-      mouse.active = true;
-      return;
-    }
-    for (const s of [touch.move, touch.aim]) {
-      if (!s || s.id !== e.pointerId) continue;
-      const dx = e.clientX - s.sx;
-      const dy = e.clientY - s.sy;
-      const len = Math.hypot(dx, dy) || 1;
-      const k = Math.min(1, len / STICK_RADIUS) / len;
-      s.dx = dx * k;
-      s.dy = dy * k;
-    }
+    if (e.pointerType !== 'mouse') return;
+    Object.assign(mouse, toWorld(e.clientX, e.clientY), { active: true });
   });
-
-  function endPointer(e) {
-    if (e.pointerType === 'mouse') {
-      mouse.down = false;
-      return;
-    }
-    if (touch.move && touch.move.id === e.pointerId) touch.move = null;
-    if (touch.aim && touch.aim.id === e.pointerId) touch.aim = null;
-  }
-  canvas.addEventListener('pointerup', endPointer);
-  canvas.addEventListener('pointercancel', endPointer);
+  window.addEventListener('pointerup', (e) => {
+    if (e.pointerType === 'mouse') mouse.down = false;
+  });
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
-  newGame();
   requestAnimationFrame((now) => {
     last = now;
     requestAnimationFrame(frame);

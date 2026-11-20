@@ -1,15 +1,24 @@
-// Kontrol sentuh bersama: analog jalan, analog bidik, tombol TEMBAK, dan DASH.
-// Dipakai oleh controller HP (controller.js) dan mode main di HP (solo.js).
+// Kontrol sentuh bersama ala game mobile (mirip Brawl Stars):
+//   - Analog kiri: jalan.
+//   - Stik SERANG (kanan): geser untuk membidik, lepas untuk menembak.
+//     Ketuk saja = tembak otomatis ke musuh terdekat.
+//   - Tombol DASH.
+// Dipakai controller HP (controller.js) dan mode main di HP (solo.js).
 (function (root) {
   'use strict';
+
+  const TAP_DRAG = 0.3; // geser kurang dari ini (relatif radius) dianggap ketuk
+  const AIM_DEADZONE = 0.2;
 
   function vibrate(pattern) {
     if (navigator.vibrate) navigator.vibrate(pattern);
   }
 
-  function setupStick(stick, knob, onMove, onRelease) {
+  function setupStick(stick, knob, handlers) {
     let pointerId = null;
-    function update(e) {
+    let maxDrag = 0;
+    let last = { x: 0, y: 0 };
+    function read(e) {
       const rect = stick.getBoundingClientRect();
       const radius = rect.width / 2;
       let dx = e.clientX - (rect.left + radius);
@@ -20,79 +29,123 @@
         dy = (dy / len) * radius;
       }
       knob.style.transform = `translate(${dx}px, ${dy}px)`;
-      onMove(dx / radius, dy / radius);
+      return { x: dx / radius, y: dy / radius };
     }
-    function reset() {
+    function finish(cancelled) {
       pointerId = null;
       knob.style.transform = '';
-      onRelease();
+      stick.classList.remove('held');
+      handlers.end(last, maxDrag, cancelled);
     }
     stick.addEventListener('pointerdown', (e) => {
       if (pointerId !== null) return;
       e.preventDefault();
       pointerId = e.pointerId;
       stick.setPointerCapture(e.pointerId);
-      update(e);
+      stick.classList.add('held');
+      maxDrag = 0;
+      last = read(e);
+      maxDrag = Math.max(maxDrag, Math.hypot(last.x, last.y));
+      handlers.move(last, maxDrag);
     });
     stick.addEventListener('pointermove', (e) => {
-      if (e.pointerId === pointerId) update(e);
+      if (e.pointerId !== pointerId) return;
+      last = read(e);
+      maxDrag = Math.max(maxDrag, Math.hypot(last.x, last.y));
+      handlers.move(last, maxDrag);
     });
-    const end = (e) => {
-      if (e.pointerId === pointerId) reset();
-    };
-    stick.addEventListener('pointerup', end);
-    stick.addEventListener('pointercancel', end);
-    stick.addEventListener('lostpointercapture', end);
+    stick.addEventListener('pointerup', (e) => {
+      if (e.pointerId === pointerId) finish(false);
+    });
+    stick.addEventListener('pointercancel', (e) => {
+      if (e.pointerId === pointerId) finish(true);
+    });
+    stick.addEventListener('lostpointercapture', (e) => {
+      if (e.pointerId === pointerId) finish(true);
+    });
+    stick.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
-  // el: { left, leftKnob, right, rightKnob, fire, dash }
-  // Mengembalikan objek input yang selalu terbarui.
+  // el: { left, leftKnob, attack, attackKnob, dash, ring? }
+  // opts.onChange(input, reason): dipanggil setiap input berubah (untuk kirim segera).
+  // opts.cooldown: durasi cooldown tembak (detik), untuk animasi cincin lokal.
   function attach(el, opts) {
-    const options = Object.assign({ autoFireWhileAiming: false }, opts);
-    const input = { mx: 0, my: 0, ax: 0, ay: 0, aiming: false, fire: false, dash: false };
-    let fireHeld = false;
+    const options = Object.assign({ onChange: null, cooldown: 1.2 }, opts);
+    const input = { mx: 0, my: 0, ax: 0, ay: 0, aiming: false, fire: false, dash: false, shot: 0, sx: 0, sy: 0 };
+    let readyAt = 0;
+    let cdTimer = null;
 
-    function syncFire() {
-      input.fire = fireHeld || (options.autoFireWhileAiming && input.aiming && Math.hypot(input.ax, input.ay) > 0.55);
+    const changed = (reason) => {
+      if (options.onChange) options.onChange(input, reason);
+    };
+
+    function startCooldownRing(seconds) {
+      readyAt = performance.now() + seconds * 1000;
+      el.attack.classList.add('cooling');
+      clearInterval(cdTimer);
+      cdTimer = setInterval(() => {
+        const left = Math.max(0, readyAt - performance.now());
+        el.attack.style.setProperty('--cd', String(left / (options.cooldown * 1000)));
+        if (left <= 0) {
+          clearInterval(cdTimer);
+          el.attack.classList.remove('cooling');
+          el.attack.style.setProperty('--cd', '0');
+        }
+      }, 33);
     }
 
-    setupStick(el.left, el.leftKnob, (x, y) => {
-      input.mx = x;
-      input.my = y;
-    }, () => {
-      input.mx = 0;
-      input.my = 0;
+    setupStick(el.left, el.leftKnob, {
+      move(v) {
+        input.mx = v.x;
+        input.my = v.y;
+        changed('move');
+      },
+      end() {
+        input.mx = 0;
+        input.my = 0;
+        changed('move');
+      },
     });
 
-    setupStick(el.right, el.rightKnob, (x, y) => {
-      input.ax = x;
-      input.ay = y;
-      input.aiming = Math.hypot(x, y) > 0.2;
-      syncFire();
-    }, () => {
-      input.ax = 0;
-      input.ay = 0;
-      input.aiming = false;
-      syncFire();
+    setupStick(el.attack, el.attackKnob, {
+      move(v, maxDrag) {
+        const aiming = maxDrag >= TAP_DRAG && Math.hypot(v.x, v.y) > AIM_DEADZONE;
+        input.aiming = aiming;
+        input.ax = aiming ? v.x : 0;
+        input.ay = aiming ? v.y : 0;
+        el.attack.classList.toggle('aiming', aiming);
+        changed('aim');
+      },
+      end(v, maxDrag, cancelled) {
+        const dragged = maxDrag >= TAP_DRAG;
+        const len = Math.hypot(v.x, v.y);
+        input.aiming = false;
+        input.ax = 0;
+        input.ay = 0;
+        el.attack.classList.remove('aiming');
+        // Bidikan ditarik balik ke tengah = batal (tidak menembak).
+        if (cancelled || (dragged && len <= AIM_DEADZONE)) {
+          changed('aim');
+          return;
+        }
+        if (performance.now() < readyAt) {
+          el.attack.classList.remove('denied');
+          void el.attack.offsetWidth;
+          el.attack.classList.add('denied');
+          vibrate(30);
+          changed('aim');
+          return;
+        }
+        input.shot += 1;
+        input.sx = dragged ? v.x / len : 0;
+        input.sy = dragged ? v.y / len : 0;
+        startCooldownRing(options.cooldown);
+        vibrate(15);
+        changed('shot');
+      },
     });
 
-    el.fire.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
-      fireHeld = true;
-      syncFire();
-      el.fire.classList.add('pressed');
-      vibrate(12);
-    });
-    const releaseFire = () => {
-      fireHeld = false;
-      syncFire();
-      el.fire.classList.remove('pressed');
-    };
-    el.fire.addEventListener('pointerup', releaseFire);
-    el.fire.addEventListener('pointercancel', releaseFire);
-    el.fire.addEventListener('pointerleave', releaseFire);
-
-    // Dash dikirim sebagai pulsa singkat; game hanya memicu dash pada transisi false -> true.
+    // Dash dikirim sebagai pulsa singkat; game memicu dash pada transisi false -> true.
     el.dash.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       el.dash.classList.add('pressed');
@@ -100,16 +153,22 @@
       if (input.dash) return;
       input.dash = true;
       vibrate(20);
+      changed('dash');
       setTimeout(() => {
         input.dash = false;
+        changed('dash');
       }, 160);
     });
+    el.dash.addEventListener('contextmenu', (e) => e.preventDefault());
 
-    for (const node of [el.left, el.right, el.fire, el.dash]) {
-      node.addEventListener('contextmenu', (e) => e.preventDefault());
-    }
-
-    return input;
+    return {
+      input,
+      // Sinkronkan cincin cooldown dengan status dari TV (misalnya setelah ronde baru).
+      syncCooldown(seconds) {
+        const left = Math.max(0, readyAt - performance.now()) / 1000;
+        if (seconds <= 0.05 && left > 0.25) startCooldownRing(0);
+      },
+    };
   }
 
   root.TankTouch = { attach, vibrate };

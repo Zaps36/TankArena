@@ -255,11 +255,15 @@
           const p = playerById(ev.id);
           if (!p) continue;
           const t = tankState(p.id);
-          t.recoil = 7;
-          const mx = p.x + Math.cos(p.angle) * 34;
-          const my = p.y + Math.sin(p.angle) * 34;
-          puff(mx, my, '#fff6c2', { count: 4, speed: 40, size: 6, life: 0.25, grow: 18 });
-          ring(mx, my, '#ffd23f', 16);
+          t.recoil = 9;
+          const a = typeof ev.angle === 'number' ? ev.angle : p.angle;
+          const mx = p.x + Math.cos(a) * 36;
+          const my = p.y + Math.sin(a) * 36;
+          puff(mx, my, '#fff6c2', { count: 5, speed: 50, size: 7, life: 0.3, grow: 20 });
+          ring(mx, my, p.color, 22);
+          sparks(mx, my, 4, '#ffd23f');
+        } else if (ev.type === 'impact') {
+          impact(ev);
         } else if (ev.type === 'dash') {
           const p = playerById(ev.id);
           if (!p) continue;
@@ -474,6 +478,21 @@
         ctx.fill();
       }
 
+      if (p.shield) {
+        // Gelembung pelindung setelah respawn / awal ronde.
+        const pulse = 1 + Math.sin(now / 90) * 0.05;
+        ctx.globalAlpha = 0.28;
+        ctx.fillStyle = '#a8e6ff';
+        ctx.beginPath();
+        ctx.arc(0, 0, 30 * pulse, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 0.9;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+
       if (t.flash > 0) {
         ctx.globalAlpha = t.flash * 0.8;
         ctx.fillStyle = '#fff';
@@ -522,34 +541,121 @@
       }
     }
 
-    function drawBullets(snap) {
-      const seen = new Set();
-      for (const b of snap.bullets) {
-        seen.add(b.id);
-        const prev = bulletTrail.get(b.id);
-        if (prev) {
-          ctx.strokeStyle = 'rgba(255, 246, 194, .7)';
-          ctx.lineWidth = 7;
-          ctx.lineCap = 'round';
-          ctx.beginPath();
-          ctx.moveTo(prev.x, prev.y);
-          ctx.lineTo(b.x, b.y);
-          ctx.stroke();
-        }
-        bulletTrail.set(b.id, { x: b.x, y: b.y });
-        ctx.fillStyle = '#ffd23f';
+    // Garis bidik putus-putus saat pemain menahan stik SERANG (seperti Brawl Stars).
+    function drawAimGuides(snap, now) {
+      for (const p of snap.players) {
+        if (!p.alive || !p.aim) continue;
+        const len = 260;
+        const ex = p.x + Math.cos(p.angle) * len;
+        const ey = p.y + Math.sin(p.angle) * len;
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = 'rgba(27, 21, 48, .35)';
+        ctx.lineWidth = 16;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(ex, ey);
+        ctx.stroke();
+        ctx.setLineDash([14, 12]);
+        ctx.lineDashOffset = -now / 25;
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 7;
+        ctx.globalAlpha = p.fireCooldown > 0 ? 0.35 : 0.9;
+        ctx.beginPath();
+        ctx.moveTo(p.x + Math.cos(p.angle) * 30, p.y + Math.sin(p.angle) * 30);
+        ctx.lineTo(ex, ey);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = p.color;
         ctx.strokeStyle = INK;
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(b.x, b.y, 6, 0, Math.PI * 2);
+        ctx.arc(ex, ey, 9, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
-        ctx.fillStyle = '#fff';
+        ctx.restore();
+      }
+    }
+
+    // Peluru: kapsul berwarna pemilik dengan inti terang, jejak meruncing, dan kilau.
+    function drawBullets(snap, now) {
+      const seen = new Set();
+      for (const b of snap.bullets) {
+        seen.add(b.id);
+        const owner = playerById(b.o);
+        const color = owner ? owner.color : '#ffd23f';
+        let trail = bulletTrail.get(b.id);
+        if (!trail) {
+          trail = [];
+          bulletTrail.set(b.id, trail);
+        }
+        const lastPt = trail[trail.length - 1];
+        if (!lastPt || lastPt.x !== b.x || lastPt.y !== b.y) trail.push({ x: b.x, y: b.y });
+        if (trail.length > 7) trail.shift();
+
+        // Jejak meruncing.
+        for (let i = 1; i < trail.length; i++) {
+          const t = i / trail.length;
+          ctx.strokeStyle = color;
+          ctx.globalAlpha = 0.15 + t * 0.45;
+          ctx.lineWidth = 3 + t * 9;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(trail[i - 1].x, trail[i - 1].y);
+          ctx.lineTo(trail[i].x, trail[i].y);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+
+        const angle = Math.atan2(b.vy, b.vx);
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        // Cahaya lembut.
+        ctx.globalAlpha = 0.35 + Math.sin(now / 60 + b.id) * 0.1;
+        ctx.fillStyle = '#fff6c2';
         ctx.beginPath();
-        ctx.arc(b.x - 2, b.y - 2, 2, 0, Math.PI * 2);
+        ctx.arc(0, 0, 13, 0, Math.PI * 2);
         ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.rotate(angle);
+        // Badan kapsul.
+        ctx.fillStyle = color;
+        ctx.strokeStyle = INK;
+        ctx.lineWidth = 3;
+        roundRect(ctx, -11, -6.5, 22, 13, 6.5);
+        ctx.fill();
+        ctx.stroke();
+        // Inti terang di depan.
+        ctx.fillStyle = '#fff6c2';
+        ctx.beginPath();
+        ctx.arc(4, 0, 4.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255, 255, 255, .7)';
+        roundRect(ctx, -7, -4, 10, 2.5, 1.2);
+        ctx.fill();
+        ctx.restore();
       }
       for (const id of [...bulletTrail.keys()]) if (!seen.has(id)) bulletTrail.delete(id);
+    }
+
+    function impact(ev) {
+      const color = ev.color || '#ffd23f';
+      if (ev.kind === 'tank') {
+        ring(ev.x, ev.y, '#fff6c2', 30);
+        sparks(ev.x, ev.y, 9, color);
+        puff(ev.x, ev.y, color, { count: 5, speed: 90, size: 6, life: 0.35, grow: 16 });
+        shake = Math.max(shake, 4);
+      } else if (ev.kind === 'shield') {
+        ring(ev.x, ev.y, '#a8e6ff', 26);
+        sparks(ev.x, ev.y, 5, '#a8e6ff');
+      } else if (ev.kind === 'wall') {
+        ring(ev.x, ev.y, color, 22);
+        puff(ev.x, ev.y, '#e8c79a', { count: 5, speed: 60, size: 6, life: 0.4, grow: 12 });
+        sparks(ev.x, ev.y, 4, color);
+      } else {
+        puff(ev.x, ev.y, '#f3e6c4', { count: 3, speed: 30, size: 5, life: 0.3, grow: 10 });
+      }
     }
 
     function drawParticles() {
@@ -722,8 +828,9 @@
       ctx.save();
       if (shake > 0) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
       ctx.drawImage(background, 0, 0);
-      drawBullets(snap);
+      drawAimGuides(snap, now);
       for (const p of snap.players) drawTank(p, now, p.id === opts.highlightId);
+      drawBullets(snap, now);
       drawParticles();
       drawFloaters();
       ctx.restore();

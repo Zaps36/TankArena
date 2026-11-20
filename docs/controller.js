@@ -10,11 +10,19 @@
   const chipRelay = $('chip-relay');
   const lifeEl = $('life');
   const hpFill = $('hp-fill');
+  const ptsEl = $('pts');
   const linkEl = $('link');
   const dashBtn = $('dash');
+  const roundPill = $('round-pill');
+  const lobbyEl = $('lobby');
+  const lobbyText = $('lobby-text');
+  const lobbyHost = $('lobby-host');
+  const bigEl = $('big');
   const overlay = $('overlay');
   const overlayTitle = $('overlay-title');
   const overlayText = $('overlay-text');
+  const overlayExtra = $('overlay-extra');
+  const overlayBtns = $('overlay-btns');
 
   $('room-code').textContent = room || '-';
   try {
@@ -28,15 +36,6 @@
     msgEl.classList.toggle('error', !!isError);
   }
 
-  const input = TankTouch.attach({
-    left: $('left'),
-    leftKnob: $('left-knob'),
-    right: $('right'),
-    rightKnob: $('right-knob'),
-    fire: $('fire'),
-    dash: dashBtn,
-  });
-
   if (!room) {
     message('QR tidak valid. Scan ulang dari layar utama.', true);
     return;
@@ -47,7 +46,58 @@
   let lastHp = null;
   let lastSent = '';
   let lastSentAt = 0;
+  let sendTimer = null;
+  let bigKey = '';
+  let lastStatus = null;
 
+  // ------------------------------------------------------------ kirim input
+  // Dikirim segera saat berubah (dibatasi jaraknya), plus detak berkala.
+  function packed(input) {
+    return {
+      t: 'in',
+      i: [input.mx, input.my, input.ax, input.ay, input.sx, input.sy].map((v) => Math.round(v * 100) / 100),
+      f: (input.aiming ? 1 : 0) | (input.dash ? 4 : 0),
+      s: input.shot,
+    };
+  }
+
+  function sendInput(force) {
+    if (!inGame || !net.transport()) return;
+    const now = Date.now();
+    const msg = packed(pad.input);
+    const k = JSON.stringify(msg);
+    if (!force && k === lastSent && now - lastSentAt < 350) return;
+    const minGap = net.transport() === 'relay' ? 70 : 25;
+    const wait = minGap - (now - lastSentAt);
+    if (wait > 0 && !force) {
+      if (!sendTimer) sendTimer = setTimeout(() => {
+        sendTimer = null;
+        sendInput(false);
+      }, wait);
+      return;
+    }
+    clearTimeout(sendTimer);
+    sendTimer = null;
+    lastSent = k;
+    lastSentAt = now;
+    net.send(msg);
+  }
+
+  const pad = TankTouch.attach({
+    left: $('left'),
+    leftKnob: $('left-knob'),
+    attack: $('attack'),
+    attackKnob: $('attack-knob'),
+    dash: dashBtn,
+  }, {
+    cooldown: 1.2,
+    // Tembakan dan dash dikirim tanpa menunggu supaya terasa responsif.
+    onChange: (input, reason) => sendInput(reason === 'shot' || reason === 'dash'),
+  });
+
+  setInterval(() => sendInput(false), 120);
+
+  // ------------------------------------------------------------- jaringan
   const LABEL = {
     connecting: ['...', 'wait'],
     ready: ['siap', 'ready'],
@@ -63,6 +113,11 @@
     chip.className = `chip ${cls}`;
   }
 
+  function paintLink(active) {
+    linkEl.textContent = active === 'relay' ? 'RELAY' : active === 'rtc' ? 'LANGSUNG' : 'MENYAMBUNG';
+    linkEl.className = active === 'relay' ? 'relay' : active ? '' : 'lost';
+  }
+
   const net = TankNet.connectClient(room, {
     onStatus(s) {
       paintChip(chipRtc, 'Langsung', s.rtc);
@@ -73,14 +128,10 @@
         if (usable) message('Siap! Isi nama lalu tekan MASUK.');
         else if (s.rtc !== 'connecting' && s.relay !== 'connecting') message('Tidak bisa tersambung ke internet. Cek koneksi HP lalu muat ulang.', true);
       }
-      if (inGame) {
-        linkEl.textContent = s.active === 'relay' ? 'RELAY' : s.active === 'rtc' ? 'LANGSUNG' : 'MENYAMBUNG';
-        linkEl.className = s.active === 'relay' ? 'relay' : s.active ? '' : 'lost';
-      }
+      if (inGame) paintLink(s.active);
     },
     onRetry(attempt) {
-      if (inGame) return;
-      message(`Belum ada jawaban dari layar utama, mencoba lagi (${attempt})...`);
+      if (!inGame) message(`Belum ada jawaban dari layar utama, mencoba lagi (${attempt})...`);
     },
     onFail(text) {
       joining = false;
@@ -109,33 +160,95 @@
     joinEl.style.display = 'none';
     document.querySelector('.clouds').style.display = 'none';
     gameEl.style.display = 'block';
-    linkEl.textContent = net.transport() === 'relay' ? 'RELAY' : 'LANGSUNG';
-    linkEl.className = net.transport() === 'relay' ? 'relay' : '';
+    paintLink(net.transport());
+    sendInput(true);
+  }
+
+  // ------------------------------------------------------------ status UI
+  function showBig(text, cls) {
+    const k = `${text}|${cls}`;
+    if (k === bigKey) return;
+    bigKey = k;
+    bigEl.innerHTML = text ? `<span class="${cls || ''}">${text}</span>` : '';
+  }
+
+  function showOverlay(title, color, text, extra, buttons) {
+    overlayTitle.textContent = title;
+    overlayTitle.style.color = color;
+    overlayText.innerHTML = text;
+    overlayExtra.innerHTML = extra || '';
+    overlayBtns.style.display = buttons ? 'flex' : 'none';
+    overlay.style.display = 'grid';
+  }
+
+  function placeLabel(n) {
+    return n === 1 ? 'JUARA 1!' : `JUARA ${n}`;
   }
 
   function updateStatus(s) {
+    const prev = lastStatus;
+    lastStatus = s;
     const ratio = Math.max(0, s.hp) / 100;
     hpFill.style.width = `${ratio * 100}%`;
     hpFill.style.background = ratio > 0.6 ? 'var(--green)' : ratio > 0.3 ? 'var(--yellow)' : 'var(--red)';
     lifeEl.innerHTML = [0, 1, 2].map((i) => `<span class="heart${i < s.lives ? '' : ' empty'}"></span>`).join('');
+    ptsEl.textContent = `${s.total} poin`;
     dashBtn.classList.toggle('cooldown', s.dash > 0);
-    if (lastHp !== null && s.hp < lastHp) TankTouch.vibrate(s.hp <= 0 ? [80, 40, 120] : 40);
+    pad.syncCooldown(s.fire);
+    if (s.phase === 'play' && lastHp !== null && s.hp < lastHp) TankTouch.vibrate(s.hp <= 0 ? [80, 40, 120] : 40);
     lastHp = s.hp;
 
-    if (s.round) {
-      overlayTitle.textContent = s.round.title;
-      overlayTitle.style.color = s.round.color || 'var(--yellow)';
-      overlayText.textContent = s.round.text;
-      overlay.style.display = 'grid';
-    } else if (s.out) {
-      overlayTitle.textContent = 'KO!';
-      overlayTitle.style.color = 'var(--red)';
-      overlayText.textContent = 'Nyawa habis. Tunggu ronde berikutnya.';
-      overlay.style.display = 'grid';
+    // Lobby
+    lobbyEl.style.display = s.phase === 'lobby' ? 'block' : 'none';
+    if (s.phase === 'lobby') {
+      lobbyHost.style.display = s.host ? 'block' : 'none';
+      lobbyText.textContent = s.host
+        ? `Kamu host. Pilih ronde lalu mulai (${s.players} pemain). Sambil nunggu, coba latihan tembak!`
+        : 'Menunggu host memulai game... Sambil nunggu, coba latihan tembak!';
+      lobbyEl.querySelectorAll('.seg').forEach((b) => b.classList.toggle('on', Number(b.dataset.n) === s.rounds));
+    }
+
+    // Info ronde + waktu
+    if (s.phase === 'play' || s.phase === 'countdown' || s.phase === 'intro') {
+      roundPill.hidden = false;
+      const left = s.left === null ? '' : ` · ${Math.floor(s.left / 60)}:${String(s.left % 60).padStart(2, '0')}`;
+      roundPill.textContent = `RONDE ${s.round}/${s.rounds}${left}`;
+      roundPill.classList.toggle('hurry', s.left !== null && s.left <= 10);
+    } else {
+      roundPill.hidden = true;
+    }
+
+    // Teks besar
+    if (s.phase === 'intro') showBig(s.round === s.rounds ? 'RONDE TERAKHIR!' : `RONDE ${s.round}`, 'small');
+    else if (s.phase === 'countdown' || (s.phase === 'play' && s.cd === 'GO!')) {
+      showBig(String(s.cd), s.cd === 'GO!' ? 'go' : '');
+      if (!prev || prev.cd !== s.cd) TankTouch.vibrate(s.cd === 'GO!' ? 90 : 25);
+    } else showBig('', '');
+
+    // Overlay
+    if (s.waiting) {
+      showOverlay('TUNGGU', 'var(--yellow)', 'Kamu ikut mulai <b>ronde berikutnya</b>.');
+    } else if (s.phase === 'roundEnd' && s.place) {
+      const color = s.place === 1 ? 'var(--yellow)' : s.place === 2 ? '#d7d7e6' : s.place === 3 ? 'var(--orange)' : '#fff';
+      showOverlay(placeLabel(s.place), color, `Ronde ${s.round} selesai`, `<div class="gain">+${s.gain} poin</div><p>Total ${s.total} poin · peringkat ${s.rank} dari ${s.players}</p>`);
+    } else if (s.phase === 'final') {
+      const win = s.rank === 1;
+      showOverlay(win ? 'JUARA UMUM!' : `PERINGKAT ${s.rank}`, win ? 'var(--yellow)' : '#fff', win ? 'Selamat, kamu juaranya! 🏆' : 'Game selesai. Lihat podium di layar utama.', `<p>Total ${s.total} poin</p>`, s.host);
+      if (!prev || prev.phase !== 'final') TankTouch.vibrate(win ? [100, 60, 100, 60, 200] : 80);
+    } else if (s.phase === 'play' && s.out) {
+      showOverlay('KO!', 'var(--red)', 'Nyawa habis. Tunggu ronde selesai.');
     } else {
       overlay.style.display = 'none';
     }
   }
+
+  // ------------------------------------------------------- tombol host
+  lobbyEl.querySelectorAll('.seg').forEach((b) => {
+    b.addEventListener('click', () => net.send({ t: 'rounds', n: Number(b.dataset.n) }));
+  });
+  $('start-btn').addEventListener('click', () => net.send({ t: 'start' }));
+  $('again-btn').addEventListener('click', () => net.send({ t: 'again' }));
+  $('lobby-btn').addEventListener('click', () => net.send({ t: 'lobby' }));
 
   joinBtn.addEventListener('click', () => {
     if (joining) return;
@@ -153,19 +266,4 @@
   nameInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') joinBtn.click();
   });
-
-  // Kirim input saat berubah, plus detak berkala supaya TV tahu HP masih ada.
-  setInterval(() => {
-    if (!inGame || !net.transport()) return;
-    const now = Date.now();
-    const minGap = net.transport() === 'relay' ? 90 : 45;
-    if (now - lastSentAt < minGap) return;
-    const packed = [input.mx, input.my, input.ax, input.ay].map((v) => Math.round(v * 100) / 100);
-    const flags = (input.aiming ? 1 : 0) | (input.fire ? 2 : 0) | (input.dash ? 4 : 0);
-    const key = packed.join(',') + '|' + flags;
-    if (key === lastSent && now - lastSentAt < 400) return;
-    lastSent = key;
-    lastSentAt = now;
-    net.send({ t: 'in', i: packed, f: flags });
-  }, 30);
 })();

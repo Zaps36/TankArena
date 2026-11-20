@@ -23,7 +23,9 @@
     .footer { margin-top: 22px; color: #fff; font-weight: 700; font-size: 13px; text-shadow: 0 2px 0 var(--ink); }
 
     #game-shell { display: none; position: fixed; inset: 0; z-index: 5; place-items: center; background: var(--ink); }
-    #game-shell canvas { display: block; width: min(100vw, calc(100vh * 1000 / 700)); height: auto; touch-action: none; }
+    .solo-stage { position: relative; width: min(100vw, calc(100vh * 1000 / 700)); }
+    .solo-stage canvas { display: block; width: 100%; height: auto; touch-action: none; }
+    .solo-stage .ov { border-radius: 22px; }
     #pad { z-index: 7; }
     #back {
       position: fixed; z-index: 6; top: 10px; left: 10px; width: auto; padding: 8px 14px; font-size: 16px; display: none;
@@ -60,12 +62,11 @@
   </main>
 
   <button class="btn red" id="back">✖ MENU</button>
-  <div id="game-shell"><canvas id="game-canvas" width="1000" height="700"></canvas></div>
+  <div id="game-shell"><div class="solo-stage" id="stage"><canvas id="game-canvas" width="1000" height="700"></canvas></div></div>
   <div class="pad" id="pad" hidden>
     <div class="stick move" id="left" data-label="JALAN"><div class="knob" id="left-knob"></div></div>
-    <div class="stick aim" id="right" data-label="BIDIK"><div class="knob" id="right-knob"></div></div>
+    <div class="stick attack" id="attack" data-label="GESER BIDIK · KETUK AUTO"><div class="knob" id="attack-knob"></div></div>
     <button class="action dash" id="dash"><span>DASH</span></button>
-    <button class="action fire" id="fire"><span>TEMBAK</span></button>
   </div>
 
   <script>
@@ -80,7 +81,7 @@
       document.body.style.overflow = 'hidden';
       document.body.style.touchAction = 'none';
       const load = (src) => new Promise((ok) => { const s = document.createElement('script'); s.src = src; s.onload = ok; document.body.appendChild(s); });
-      load('game.js').then(() => load('render.js')).then(() => load('touchpad.js')).then(() => load('solo.js'));
+      load('game.js').then(() => load('match.js')).then(() => load('render.js')).then(() => load('overlay.js')).then(() => load('touchpad.js')).then(() => load('solo.js'));
     });
     document.getElementById('back').addEventListener('click', () => location.reload());
   </script>

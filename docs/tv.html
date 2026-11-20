@@ -17,6 +17,7 @@
     }
     .stage { position: relative; flex: 1; max-width: calc((100vh - 44px) * 1000 / 700); }
     .stage canvas { display: block; width: 100%; height: auto; border-radius: 26px; box-shadow: 0 8px 0 var(--ink), 0 22px 40px rgba(0,0,0,.3); }
+    .stage .ov { border-radius: 26px; }
 
     .logo { font-size: 40px; text-align: center; }
     .join { padding: 30px 16px 16px; text-align: center; }
@@ -89,7 +90,7 @@
       </section>
       <a class="btn red" href="index.html" style="padding:8px 14px;font-size:16px">✖ MENU</a>
     </aside>
-    <main class="stage">
+    <main class="stage" id="stage">
       <canvas id="game" width="1000" height="700"></canvas>
     </main>
   </div>
@@ -101,7 +102,9 @@
   <script src="vendor/qrcode-generator.js"></script>
   <script src="net.js"></script>
   <script src="game.js"></script>
+  <script src="match.js"></script>
   <script src="render.js"></script>
+  <script src="overlay.js"></script>
   <script src="tv.js"></script>
 </body>
 </html>

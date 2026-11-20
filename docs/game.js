@@ -1,23 +1,25 @@
 // Logika game. Tidak ada dependensi I/O di sini.
-// Dipakai di server (multiplayer) dan di browser (mode lawan bot).
+// Dipakai di layar TV, mode main di HP, dan server Node (opsional).
 (function (root) {
 'use strict';
 
 const WORLD = { width: 1000, height: 700 };
 const TANK_RADIUS = 18;
 const TANK_SPEED = 170; // px per detik
-const BULLET_SPEED = 520; // px per detik
-const BULLET_LIFE = 1.6; // detik
-const BULLET_RADIUS = 4;
-const FIRE_COOLDOWN = 0.45; // detik
+const BULLET_SPEED = 560; // px per detik
+const BULLET_LIFE = 1.5; // detik
+const BULLET_RADIUS = 6;
+const FIRE_COOLDOWN = 1.2; // detik
 const MAX_HP = 100;
-const BULLET_DAMAGE = 34;
+const BULLET_DAMAGE = 50; // 2 tembakan = 1 nyawa
 const RESPAWN_TIME = 3; // detik
+const SPAWN_SHIELD = 1.2; // detik kebal setelah respawn
 const MAX_LIVES = 3;
 const DASH_DISTANCE = 120;
 const DASH_COOLDOWN = 2;
 const DASH_STEPS = 8;
 const MAX_PLAYERS = 4;
+const AUTO_AIM_RANGE = 860; // kira-kira jarak tempuh peluru (560 x 1.5)
 
 // Rintangan berbentuk kotak: { x, y, w, h }
 const OBSTACLES = [
@@ -35,7 +37,11 @@ const SPAWNS = [
   { x: 80, y: WORLD.height - 80 },
 ];
 
-const PLAYER_COLORS = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f'];
+const PLAYER_COLORS = ['#ff4d5e', '#3fa9ff', '#4cd964', '#ffd23f'];
+
+function emptyInput() {
+  return { mx: 0, my: 0, ax: 0, ay: 0, aiming: false, fire: false, dash: false, shot: null, sx: 0, sy: 0 };
+}
 
 function createGame() {
   return {
@@ -49,11 +55,14 @@ function spawnPoint(index) {
   return { ...SPAWNS[index % SPAWNS.length] };
 }
 
-function addPlayer(game, id, name) {
+// slot opsional: dipakai supaya warna dan posisi awal pemain tetap sama antar ronde.
+function addPlayer(game, id, name, slot) {
   if (game.players.size >= MAX_PLAYERS) return null;
   const used = new Set([...game.players.values()].map((p) => p.slot));
-  let slot = 0;
-  while (used.has(slot)) slot++;
+  if (!(Number.isInteger(slot) && slot >= 0 && slot < MAX_PLAYERS && !used.has(slot))) {
+    slot = 0;
+    while (used.has(slot)) slot++;
+  }
 
   const pos = spawnPoint(slot);
   const player = {
@@ -63,7 +72,7 @@ function addPlayer(game, id, name) {
     color: PLAYER_COLORS[slot],
     x: pos.x,
     y: pos.y,
-    angle: 0,
+    angle: Math.atan2(WORLD.height / 2 - pos.y, WORLD.width / 2 - pos.x),
     hp: MAX_HP,
     lives: MAX_LIVES,
     kills: 0,
@@ -71,10 +80,12 @@ function addPlayer(game, id, name) {
     alive: true,
     eliminated: false,
     respawnIn: 0,
+    shield: SPAWN_SHIELD,
     cooldown: 0,
     dashCooldown: 0,
     lastDash: false,
-    input: { mx: 0, my: 0, ax: 0, ay: 0, aiming: false, fire: false, dash: false },
+    lastShot: null, // nilai `shot` terakhir yang sudah diproses
+    input: emptyInput(),
   };
   game.players.set(id, player);
   return player;
@@ -84,9 +95,14 @@ function removePlayer(game, id) {
   game.players.delete(id);
 }
 
+function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
+}
+
 function setInput(game, id, input) {
   const p = game.players.get(id);
   if (!p) return;
+  const shot = Number.isInteger(input.shot) ? input.shot : null;
   p.input = {
     mx: clamp(Number(input.mx) || 0, -1, 1),
     my: clamp(Number(input.my) || 0, -1, 1),
@@ -95,11 +111,12 @@ function setInput(game, id, input) {
     aiming: !!input.aiming,
     fire: !!input.fire,
     dash: !!input.dash,
+    shot,
+    sx: clamp(Number(input.sx) || 0, -1, 1),
+    sy: clamp(Number(input.sy) || 0, -1, 1),
   };
-}
-
-function clamp(v, min, max) {
-  return Math.max(min, Math.min(max, v));
+  // Input pertama dari HP: catat penghitung tembakan tanpa langsung menembak.
+  if (p.lastShot === null && shot !== null) p.lastShot = shot;
 }
 
 // Dorong lingkaran (tank) keluar dari kotak rintangan.
@@ -111,7 +128,6 @@ function resolveCircleRect(x, y, r, rect) {
   const distSq = dx * dx + dy * dy;
   if (distSq >= r * r) return { x, y };
   if (distSq === 0) {
-    // Pusat tank tepat di dalam kotak: dorong ke sisi terdekat.
     const left = x - rect.x;
     const right = rect.x + rect.w - x;
     const top = y - rect.y;
@@ -138,126 +154,8 @@ function moveTank(x, y, dx, dy) {
   return { x: nx, y: ny };
 }
 
-function spawnBullet(game, owner, angle) {
-  game.bullets.push({
-    id: game.nextBulletId++,
-    ownerId: owner.id,
-    x: owner.x + Math.cos(angle) * (TANK_RADIUS + 6),
-    y: owner.y + Math.sin(angle) * (TANK_RADIUS + 6),
-    vx: Math.cos(angle) * BULLET_SPEED,
-    vy: Math.sin(angle) * BULLET_SPEED,
-    life: BULLET_LIFE,
-  });
-}
-
 function hitsRect(x, y, rect) {
   return x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h;
-}
-
-// Satu langkah simulasi. dt dalam detik.
-function step(game, dt) {
-  const events = [];
-
-  for (const p of game.players.values()) {
-    p.dashCooldown = Math.max(0, p.dashCooldown - dt);
-    if (!p.alive) {
-      if (p.eliminated) {
-        p.lastDash = !!p.input.dash;
-        continue;
-      }
-      p.respawnIn -= dt;
-      if (p.respawnIn <= 0 && p.lives > 0) {
-        const pos = spawnPoint(p.slot);
-        Object.assign(p, { x: pos.x, y: pos.y, hp: MAX_HP, alive: true });
-        events.push({ type: 'respawn', id: p.id });
-      }
-      p.lastDash = !!p.input.dash;
-      continue;
-    }
-
-    const { mx, my, ax, ay, aiming, fire, dash } = p.input;
-
-    // Gerak: joystick kiri. Arah tank mengikuti bidik jika bidik aktif, kalau tidak mengikuti gerak.
-    const moveLen = Math.hypot(mx, my);
-    if (moveLen > 0.05) {
-      const k = Math.min(1, moveLen) / moveLen;
-      const moved = moveTank(p.x, p.y, mx * k * TANK_SPEED * dt, my * k * TANK_SPEED * dt);
-      p.x = moved.x;
-      p.y = moved.y;
-    }
-
-    if (aiming && Math.hypot(ax, ay) > 0.3) {
-      p.angle = Math.atan2(ay, ax);
-    } else if (moveLen > 0.05) {
-      p.angle = Math.atan2(my, mx);
-    }
-
-    if (dash && !p.lastDash && p.dashCooldown <= 0) {
-      let dx = aiming && Math.hypot(ax, ay) > 0.3 ? ax : mx;
-      let dy = aiming && Math.hypot(ax, ay) > 0.3 ? ay : my;
-      let dashLen = Math.hypot(dx, dy);
-      if (dashLen <= 0.05) {
-        // Analog dilepas: dash ke arah hadap tank.
-        dx = Math.cos(p.angle);
-        dy = Math.sin(p.angle);
-        dashLen = 1;
-      }
-      {
-        dx /= dashLen;
-        dy /= dashLen;
-        for (let i = 0; i < DASH_STEPS; i++) {
-          const moved = moveTank(p.x, p.y, (dx * DASH_DISTANCE) / DASH_STEPS, (dy * DASH_DISTANCE) / DASH_STEPS);
-          p.x = moved.x;
-          p.y = moved.y;
-        }
-        p.dashCooldown = DASH_COOLDOWN;
-        events.push({ type: 'dash', id: p.id });
-      }
-    }
-    p.lastDash = !!dash;
-
-    p.cooldown = Math.max(0, p.cooldown - dt);
-    if (fire && p.cooldown <= 0) {
-      spawnBullet(game, p, p.angle);
-      p.cooldown = FIRE_COOLDOWN;
-      events.push({ type: 'fire', id: p.id });
-    }
-  }
-
-  // Peluru
-  for (const b of game.bullets) {
-    b.x += b.vx * dt;
-    b.y += b.vy * dt;
-    b.life -= dt;
-  }
-  game.bullets = game.bullets.filter((b) => {
-    if (b.life <= 0) return false;
-    if (b.x < 0 || b.y < 0 || b.x > WORLD.width || b.y > WORLD.height) return false;
-    if (OBSTACLES.some((r) => hitsRect(b.x, b.y, r))) return false;
-
-    for (const p of game.players.values()) {
-      if (!p.alive || p.id === b.ownerId) continue;
-      if (Math.hypot(p.x - b.x, p.y - b.y) <= TANK_RADIUS + BULLET_RADIUS) {
-        p.hp -= BULLET_DAMAGE;
-        if (p.hp <= 0) {
-          p.hp = 0;
-          p.alive = false;
-          p.deaths++;
-          p.lives--;
-          p.respawnIn = p.lives > 0 ? RESPAWN_TIME : 0;
-          p.eliminated = p.lives <= 0;
-          const killer = game.players.get(b.ownerId);
-          if (killer) killer.kills++;
-          events.push({ type: 'kill', killer: b.ownerId, victim: p.id, lives: p.lives, eliminated: p.eliminated });
-          if (p.eliminated) events.push({ type: 'eliminated', id: p.id });
-        }
-        return false;
-      }
-    }
-    return true;
-  });
-
-  return events;
 }
 
 // Cek apakah garis dari (x1,y1) ke (x2,y2) tidak tertutup rintangan.
@@ -273,24 +171,175 @@ function hasLineOfSight(x1, y1, x2, y2) {
   return true;
 }
 
-const IDLE_INPUT = { mx: 0, my: 0, ax: 0, ay: 0, aiming: false, fire: false, dash: false };
+// Musuh terdekat; yang terlihat langsung (tidak tertutup peti) diutamakan.
+function nearestEnemy(game, me, range) {
+  let best = null;
+  let bestScore = Infinity;
+  for (const p of game.players.values()) {
+    if (p.id === me.id || !p.alive) continue;
+    const d = Math.hypot(p.x - me.x, p.y - me.y);
+    if (range && d > range) continue;
+    const score = d + (hasLineOfSight(me.x, me.y, p.x, p.y) ? 0 : 10000);
+    if (score < bestScore) {
+      bestScore = score;
+      best = p;
+    }
+  }
+  return best;
+}
 
-// AI bot sederhana: kejar pemain hidup terdekat, menyamping sambil membidik,
-// dan menembak hanya saat sudah lurus ke target dengan garis pandang bebas.
+function autoAimAngle(game, p) {
+  const target = nearestEnemy(game, p, AUTO_AIM_RANGE);
+  return target ? Math.atan2(target.y - p.y, target.x - p.x) : p.angle;
+}
+
+function spawnBullet(game, owner, angle) {
+  game.bullets.push({
+    id: game.nextBulletId++,
+    ownerId: owner.id,
+    x: owner.x + Math.cos(angle) * (TANK_RADIUS + 10),
+    y: owner.y + Math.sin(angle) * (TANK_RADIUS + 10),
+    vx: Math.cos(angle) * BULLET_SPEED,
+    vy: Math.sin(angle) * BULLET_SPEED,
+    life: BULLET_LIFE,
+  });
+}
+
+// Satu langkah simulasi. dt dalam detik.
+function step(game, dt) {
+  const events = [];
+
+  for (const p of game.players.values()) {
+    p.dashCooldown = Math.max(0, p.dashCooldown - dt);
+    p.cooldown = Math.max(0, p.cooldown - dt);
+    p.shield = Math.max(0, p.shield - dt);
+    const input = p.input;
+
+    if (!p.alive) {
+      if (!p.eliminated) {
+        p.respawnIn -= dt;
+        if (p.respawnIn <= 0 && p.lives > 0) {
+          const pos = spawnPoint(p.slot);
+          Object.assign(p, { x: pos.x, y: pos.y, hp: MAX_HP, alive: true, shield: SPAWN_SHIELD });
+          events.push({ type: 'respawn', id: p.id });
+        }
+      }
+      p.lastDash = !!input.dash;
+      if (input.shot !== null) p.lastShot = input.shot; // tembakan saat mati diabaikan
+      continue;
+    }
+
+    const { mx, my, ax, ay, aiming, fire, dash } = input;
+
+    const moveLen = Math.hypot(mx, my);
+    if (moveLen > 0.05) {
+      const k = Math.min(1, moveLen) / moveLen;
+      const moved = moveTank(p.x, p.y, mx * k * TANK_SPEED * dt, my * k * TANK_SPEED * dt);
+      p.x = moved.x;
+      p.y = moved.y;
+    }
+
+    // Arah laras: ikut bidikan saat membidik, kalau tidak ikut arah jalan.
+    if (aiming && Math.hypot(ax, ay) > 0.2) {
+      p.angle = Math.atan2(ay, ax);
+    } else if (moveLen > 0.05) {
+      p.angle = Math.atan2(my, mx);
+    }
+
+    if (dash && !p.lastDash && p.dashCooldown <= 0) {
+      let dx = moveLen > 0.05 ? mx / moveLen : Math.cos(p.angle);
+      let dy = moveLen > 0.05 ? my / moveLen : Math.sin(p.angle);
+      for (let i = 0; i < DASH_STEPS; i++) {
+        const moved = moveTank(p.x, p.y, (dx * DASH_DISTANCE) / DASH_STEPS, (dy * DASH_DISTANCE) / DASH_STEPS);
+        p.x = moved.x;
+        p.y = moved.y;
+      }
+      p.dashCooldown = DASH_COOLDOWN;
+      events.push({ type: 'dash', id: p.id });
+    }
+    p.lastDash = !!dash;
+
+    // Tembakan sekali-lepas dari HP: `shot` naik satu setiap kali stik serang dilepas.
+    // sx/sy = arah bidik; (0,0) berarti ketuk = bidik otomatis ke musuh terdekat.
+    let wantShot = false;
+    let shotAngle = p.angle;
+    if (input.shot !== null && input.shot !== p.lastShot) {
+      p.lastShot = input.shot;
+      wantShot = true;
+      shotAngle = Math.hypot(input.sx, input.sy) > 0.2 ? Math.atan2(input.sy, input.sx) : autoAimAngle(game, p);
+    } else if (fire) {
+      // Tahan tembak (keyboard, mouse, bot): menembak setiap cooldown habis.
+      wantShot = true;
+    }
+
+    if (wantShot && p.cooldown <= 0) {
+      p.angle = shotAngle;
+      spawnBullet(game, p, shotAngle);
+      p.cooldown = FIRE_COOLDOWN;
+      events.push({ type: 'fire', id: p.id, angle: shotAngle });
+    } else if (wantShot && input.shot !== null && p.cooldown > 0 && !fire) {
+      events.push({ type: 'dry', id: p.id });
+    }
+  }
+
+  for (const b of game.bullets) {
+    b.x += b.vx * dt;
+    b.y += b.vy * dt;
+    b.life -= dt;
+  }
+  game.bullets = game.bullets.filter((b) => {
+    const owner = game.players.get(b.ownerId);
+    const color = owner ? owner.color : '#ffd23f';
+    if (b.life <= 0) {
+      events.push({ type: 'impact', x: b.x, y: b.y, kind: 'fizzle', color });
+      return false;
+    }
+    if (b.x < 0 || b.y < 0 || b.x > WORLD.width || b.y > WORLD.height) {
+      events.push({ type: 'impact', x: clamp(b.x, 0, WORLD.width), y: clamp(b.y, 0, WORLD.height), kind: 'wall', color });
+      return false;
+    }
+    if (OBSTACLES.some((r) => hitsRect(b.x, b.y, r))) {
+      events.push({ type: 'impact', x: b.x, y: b.y, kind: 'wall', color });
+      return false;
+    }
+
+    for (const p of game.players.values()) {
+      if (!p.alive || p.id === b.ownerId) continue;
+      if (Math.hypot(p.x - b.x, p.y - b.y) > TANK_RADIUS + BULLET_RADIUS) continue;
+      if (p.shield > 0) {
+        events.push({ type: 'impact', x: b.x, y: b.y, kind: 'shield', color });
+        return false;
+      }
+      p.hp -= BULLET_DAMAGE;
+      events.push({ type: 'impact', x: b.x, y: b.y, kind: 'tank', color, target: p.id });
+      if (p.hp <= 0) {
+        p.hp = 0;
+        p.alive = false;
+        p.deaths++;
+        p.lives--;
+        p.respawnIn = p.lives > 0 ? RESPAWN_TIME : 0;
+        p.eliminated = p.lives <= 0;
+        if (owner) owner.kills++;
+        events.push({ type: 'kill', killer: b.ownerId, victim: p.id, lives: p.lives, eliminated: p.eliminated });
+        if (p.eliminated) events.push({ type: 'eliminated', id: p.id });
+      }
+      return false;
+    }
+    return true;
+  });
+
+  return events;
+}
+
+const IDLE_INPUT = emptyInput();
+
+// AI bot sederhana: kejar musuh terdekat, menyamping sambil membidik,
+// dan menembak hanya saat lurus ke target dengan garis pandang bebas.
 function botInput(game, botId) {
   const me = game.players.get(botId);
   if (!me || !me.alive) return IDLE_INPUT;
 
-  let target = null;
-  let best = Infinity;
-  for (const p of game.players.values()) {
-    if (p.id === botId || !p.alive) continue;
-    const d = Math.hypot(p.x - me.x, p.y - me.y);
-    if (d < best) {
-      best = d;
-      target = p;
-    }
-  }
+  const target = nearestEnemy(game, me, 0);
   if (!target) return IDLE_INPUT;
 
   const dx = target.x - me.x;
@@ -299,7 +348,7 @@ function botInput(game, botId) {
   const ux = dx / len;
   const uy = dy / len;
 
-  // Jaga jarak: maju jika jauh, mundur jika terlalu dekat, dan menyamping dengan arah tetap per bot.
+  // Jaga jarak dan menyamping dengan arah tetap per bot.
   const side = me.slot % 2 === 0 ? 1 : -1;
   let mx = -uy * 0.6 * side;
   let my = ux * 0.6 * side;
@@ -322,17 +371,21 @@ function botInput(game, botId) {
     ay: uy,
     aiming: true,
     fire: canShoot && angleDiff < 0.12,
+    dash: false,
+    shot: null,
+    sx: 0,
+    sy: 0,
   };
 }
 
 function snapshot(game) {
-  return {
-    world: WORLD,
-    obstacles: OBSTACLES,
-    players: [...game.players.values()].map((p) => ({
+  const players = [];
+  for (const p of game.players.values()) {
+    players.push({
       id: p.id,
       name: p.name,
       color: p.color,
+      slot: p.slot,
       x: Math.round(p.x),
       y: Math.round(p.y),
       angle: p.angle,
@@ -342,11 +395,15 @@ function snapshot(game) {
       deaths: p.deaths,
       alive: p.alive,
       eliminated: p.eliminated,
+      shield: p.shield > 0,
+      aim: p.input.aiming && p.input.shot !== null,
       respawnIn: Math.max(0, Math.ceil(p.respawnIn)),
       dashCooldown: Math.max(0, Math.ceil(p.dashCooldown * 10) / 10),
-    })),
-    bullets: game.bullets.map((b) => ({ id: b.id, x: Math.round(b.x), y: Math.round(b.y) })),
-  };
+      fireCooldown: Math.max(0, Math.ceil(p.cooldown * 10) / 10),
+    });
+  }
+  const bullets = game.bullets.map((b) => ({ id: b.id, x: Math.round(b.x), y: Math.round(b.y), vx: b.vx, vy: b.vy, o: b.ownerId }));
+  return { world: WORLD, obstacles: OBSTACLES, players, bullets };
 }
 
 const TankGame = {
@@ -354,6 +411,10 @@ const TankGame = {
   TANK_RADIUS,
   MAX_PLAYERS,
   MAX_LIVES,
+  MAX_HP,
+  FIRE_COOLDOWN,
+  DASH_COOLDOWN,
+  PLAYER_COLORS,
   createGame,
   addPlayer,
   removePlayer,

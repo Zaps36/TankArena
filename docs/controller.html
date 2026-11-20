@@ -22,22 +22,44 @@
 
     #game { display: none; position: fixed; inset: 0; z-index: 1; }
     .topbar {
-      position: absolute; top: calc(10px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 5;
-      display: flex; align-items: center; gap: 10px; padding: 6px 12px 6px 6px;
+      position: absolute; top: calc(8px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 5;
+      display: flex; align-items: center; gap: 9px; padding: 5px 10px 5px 5px;
       background: var(--cream); border: 4px solid var(--ink); border-radius: 18px; box-shadow: 0 5px 0 var(--ink); white-space: nowrap;
     }
-    .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--me); border: 4px solid var(--ink); box-shadow: inset 0 -4px 0 rgba(0,0,0,.2); }
-    #me-name { font-family: var(--font-title); font-size: 18px; letter-spacing: .5px; }
-    .hp { width: 90px; height: 14px; background: var(--ink); border-radius: 8px; padding: 2px; }
+    .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--me); border: 4px solid var(--ink); box-shadow: inset 0 -4px 0 rgba(0,0,0,.2); }
+    #me-name { font-family: var(--font-title); font-size: 17px; letter-spacing: .5px; }
+    .hp { width: 80px; height: 14px; background: var(--ink); border-radius: 8px; padding: 2px; }
     #hp-fill { height: 100%; width: 100%; border-radius: 6px; background: var(--green); transition: width .2s, background .2s; }
-    #link { font-size: 11px; font-weight: 700; padding: 2px 6px; border: 2px solid var(--ink); border-radius: 7px; background: #c9f7d2; }
+    #pts { font-family: var(--font-title); font-size: 14px; padding: 1px 7px; background: var(--yellow); border: 2px solid var(--ink); border-radius: 8px; }
+    #link { font-size: 10px; font-weight: 700; padding: 2px 5px; border: 2px solid var(--ink); border-radius: 7px; background: #c9f7d2; }
     #link.relay { background: #fff1b8; }
     #link.lost { background: #ffd0d5; }
+    #round-pill { position: absolute; z-index: 5; top: calc(64px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); font-family: var(--font-title); font-size: 14px; padding: 2px 10px; background: var(--ink); color: #fff; border-radius: 10px; white-space: nowrap; }
+    #round-pill.hurry { background: var(--red); }
 
-    #overlay { position: absolute; inset: 0; z-index: 6; display: none; place-items: center; background: rgba(27,21,48,.55); }
-    #overlay .panel { padding: 22px 26px; text-align: center; max-width: 320px; }
-    #overlay .title { font-size: 40px; }
-    #rotate { display: none; position: absolute; z-index: 5; top: calc(72px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 13px; }
+    /* Panel lobby kecil di atas: kontrol tetap bisa dipakai untuk latihan. */
+    #lobby { position: absolute; z-index: 6; top: calc(64px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); width: min(330px, 70vw); padding: 26px 12px 10px; text-align: center; display: none; }
+    #lobby p { margin: 0 0 6px; font-weight: 700; font-size: 13px; }
+    #lobby .segs { display: flex; justify-content: center; gap: 6px; margin: 4px 0 8px; }
+    #lobby .seg { width: 46px; height: 34px; font-family: var(--font-title); font-size: 17px; background: #fff; border: 3px solid var(--ink); border-radius: 10px; box-shadow: 0 3px 0 var(--ink); color: var(--ink); }
+    #lobby .seg.on { background: var(--yellow); transform: translateY(-2px); }
+    #lobby .btn { font-size: 18px; padding: 8px 12px; }
+    #lobby-host { display: none; }
+
+    /* Teks besar fase (RONDE, 3-2-1, GO!) - tidak menghalangi sentuhan. */
+    #big { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; pointer-events: none; }
+    #big span { font-family: var(--font-title); font-size: 30vmin; line-height: 1; color: #fff; -webkit-text-stroke: 6px var(--ink); paint-order: stroke fill; text-shadow: 0 8px 0 var(--ink); animation: count-pop .95s cubic-bezier(.3,1.8,.5,1) both; }
+    #big span.go { color: var(--green); }
+    #big span.small { font-size: 13vmin; color: var(--yellow); animation: title-pop .5s cubic-bezier(.3,1.8,.5,1) both; }
+
+    #overlay { position: absolute; inset: 0; z-index: 7; display: none; place-items: center; background: rgba(27,21,48,.55); }
+    #overlay .panel { padding: 28px 22px 18px; text-align: center; width: min(360px, 86vw); }
+    #overlay .title { font-size: 42px; }
+    #overlay p { margin: 6px 0; font-weight: 700; }
+    #overlay .gain { display: inline-block; font-family: var(--font-title); font-size: 26px; color: #fff; background: var(--green); padding: 2px 12px; border: 3px solid var(--ink); border-radius: 12px; -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; animation: gain-pop .5s cubic-bezier(.3,1.8,.5,1) .3s both; }
+    #overlay .btns { display: none; gap: 8px; margin-top: 10px; }
+    #overlay .btns .btn { font-size: 16px; padding: 8px; }
+    #rotate { display: none; position: absolute; z-index: 5; bottom: calc(200px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 13px; }
     @media (orientation: portrait) { #rotate { display: block; } }
   </style>
 </head>
@@ -63,16 +85,35 @@
       <span id="me-name">Kamu</span>
       <div class="hp"><div id="hp-fill"></div></div>
       <span id="life"><span class="heart"></span><span class="heart"></span><span class="heart"></span></span>
+      <span id="pts">0</span>
       <span id="link">LANGSUNG</span>
     </div>
+    <div id="round-pill" hidden></div>
+
+    <section class="panel" id="lobby">
+      <div class="panel-header">LOBBY</div>
+      <p id="lobby-text">Menunggu host memulai game...</p>
+      <div id="lobby-host">
+        <div class="segs"><button class="seg" data-n="3">3</button><button class="seg" data-n="5">5</button><button class="seg" data-n="7">7</button></div>
+        <button class="btn" id="start-btn">▶ MULAI GAME</button>
+      </div>
+    </section>
+
     <span class="badge" id="rotate">📱↻ Putar HP biar lebih enak</span>
+    <div id="big"></div>
+
     <div class="pad">
       <div class="stick move" id="left" data-label="JALAN"><div class="knob" id="left-knob"></div></div>
-      <div class="stick aim" id="right" data-label="BIDIK"><div class="knob" id="right-knob"></div></div>
+      <div class="stick attack" id="attack" data-label="GESER BIDIK · KETUK AUTO"><div class="knob" id="attack-knob"></div></div>
       <button class="action dash" id="dash"><span>DASH</span></button>
-      <button class="action fire" id="fire"><span>TEMBAK</span></button>
     </div>
-    <div id="overlay"><div class="panel"><h2 class="title" id="overlay-title">KO!</h2><p id="overlay-text"><b>Nyawa habis.</b></p></div></div>
+
+    <div id="overlay"><div class="panel">
+      <h2 class="title" id="overlay-title">KO!</h2>
+      <p id="overlay-text"></p>
+      <div id="overlay-extra"></div>
+      <div class="btns" id="overlay-btns"><button class="btn" id="again-btn">🔁 MAIN LAGI</button><button class="btn blue" id="lobby-btn">🏠 LOBBY</button></div>
+    </div></div>
   </div>
 
   <script src="vendor/peerjs.min.js"></script>
