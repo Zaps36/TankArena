@@ -41,6 +41,44 @@
     ctx.fillText(text, x, y);
   }
 
+  // Hati digambar sebagai path supaya tidak bergantung font atau emoji.
+  function drawHeart(ctx, x, y, s, filled) {
+    ctx.beginPath();
+    ctx.moveTo(x, y + s * 0.35);
+    ctx.bezierCurveTo(x - s * 0.1, y + s * 0.1, x - s * 0.55, y, x - s * 0.5, y - s * 0.25);
+    ctx.bezierCurveTo(x - s * 0.45, y - s * 0.55, x - s * 0.05, y - s * 0.55, x, y - s * 0.25);
+    ctx.bezierCurveTo(x + s * 0.05, y - s * 0.55, x + s * 0.45, y - s * 0.55, x + s * 0.5, y - s * 0.25);
+    ctx.bezierCurveTo(x + s * 0.55, y, x + s * 0.1, y + s * 0.1, x, y + s * 0.35);
+    ctx.closePath();
+    ctx.fillStyle = filled === false ? '#cfc8dc' : '#ff4d5e';
+    ctx.fill();
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = INK;
+    ctx.stroke();
+  }
+
+  function drawHearts(ctx, cx, y, count, size) {
+    const gap = size * 1.1;
+    const start = cx - ((count - 1) * gap) / 2;
+    for (let i = 0; i < count; i++) drawHeart(ctx, start + i * gap, y, size);
+  }
+
+  // Ledakan kecil berbentuk bintang untuk kill feed.
+  function drawBurst(ctx, x, y, r) {
+    ctx.beginPath();
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2;
+      const rr = i % 2 === 0 ? r : r * 0.5;
+      ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+    }
+    ctx.closePath();
+    ctx.fillStyle = '#ff8a2b';
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#ffd23f';
+    ctx.stroke();
+  }
+
   // Generator acak sederhana yang deterministik untuk dekorasi rumput.
   function seeded(seed) {
     let s = seed;
@@ -467,8 +505,7 @@
         ctx.fillRect(p.x - hpW / 2 + 2, p.y - 32, Math.max(0, hpW * ratio - 4), 2);
       }
 
-      const hearts = '♥'.repeat(Math.max(0, p.lives));
-      outlinedText(ctx, hearts, p.x, p.y + 32, { size: 13, fill: '#ff4d5e', width: 4, font: BODY_FONT });
+      drawHearts(ctx, p.x, p.y + 33, Math.max(0, p.lives), 11);
 
       if (highlight) {
         const bob = Math.sin(now / 180) * 4;
@@ -571,17 +608,17 @@
         const y = 30 + i * 30;
         ctx.globalAlpha = Math.min(1, f.life);
         ctx.font = `15px ${TITLE_FONT}`;
-        const text = `${f.killer}  💥  ${f.victim}`;
-        const w = ctx.measureText(text).width + 26;
+        const kw = ctx.measureText(f.killer).width;
+        const vw = ctx.measureText(f.victim).width;
+        const iconW = 34;
+        const w = kw + vw + iconW + 26;
         ctx.fillStyle = 'rgba(27, 21, 48, .82)';
         roundRect(ctx, W / 2 - w / 2, y - 12, w, 24, 10);
         ctx.fill();
-        const kw = ctx.measureText(`${f.killer}  `).width;
-        const mid = ctx.measureText('💥').width;
         const left = W / 2 - w / 2 + 13;
         outlinedText(ctx, f.killer, left, y + 1, { size: 15, fill: f.kColor, width: 0.01, align: 'left' });
-        outlinedText(ctx, '💥', left + kw, y + 1, { size: 15, fill: '#fff', width: 0.01, align: 'left' });
-        outlinedText(ctx, f.victim, left + kw + mid + ctx.measureText('  ').width, y + 1, { size: 15, fill: f.vColor, width: 0.01, align: 'left' });
+        drawBurst(ctx, left + kw + iconW / 2, y, 9);
+        outlinedText(ctx, f.victim, left + kw + iconW, y + 1, { size: 15, fill: f.vColor, width: 0.01, align: 'left' });
       });
       ctx.globalAlpha = 1;
     }
@@ -619,9 +656,9 @@
         ctx.fillText(p.name, x + 34, ry + 1);
         ctx.textAlign = 'right';
         ctx.fillText(`${p.kills}`, x + w - 66, ry + 1);
-        ctx.fillStyle = '#ff4d5e';
-        ctx.font = `14px ${BODY_FONT}`;
-        ctx.fillText('♥'.repeat(Math.max(0, p.lives)) || '💀', x + w - 14, ry + 1);
+        ctx.textAlign = 'center';
+        for (let k = 0; k < 3; k++) drawHeart(ctx, x + w - 52 + k * 15, ry + 1, 12, k < p.lives);
+        if (p.eliminated) outlinedText(ctx, 'KO', x + w - 37, ry + 1, { size: 14, fill: '#ff4d5e', width: 4 });
         ctx.globalAlpha = 1;
       });
     }
@@ -644,7 +681,7 @@
       ctx.fillStyle = ready ? '#a66bff' : '#cdbdf0';
       roundRect(ctx, x + 6, y + 6, 158 * ratio, 22, 9);
       ctx.fill();
-      outlinedText(ctx, ready ? '⚡ DASH SIAP' : '⚡ DASH...', x + 85, y + 18, { size: 16, fill: '#fff', width: 5 });
+      outlinedText(ctx, ready ? 'DASH SIAP!' : 'ISI ULANG...', x + 85, y + 18, { size: 16, fill: '#fff', width: 5 });
     }
 
     function drawBanner(title, subtitle, color) {
