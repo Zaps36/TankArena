@@ -57,7 +57,7 @@
     const ratio = Math.max(0, me.hp) / 100;
     hpFill.style.width = `${ratio * 100}%`;
     hpFill.style.background = ratio > 0.6 ? 'var(--green)' : ratio > 0.3 ? 'var(--yellow)' : 'var(--red)';
-    lifeEl.textContent = '♥'.repeat(Math.max(0, me.lives)) || '💀';
+    lifeEl.innerHTML = [0, 1, 2].map((i) => `<span class="heart${i < me.lives ? '' : ' empty'}"></span>`).join('');
     dashBtn.classList.toggle('cooldown', me.dashCooldown > 0);
     overlay.style.display = me.eliminated ? 'grid' : 'none';
     if (lastHp !== null && me.hp < lastHp) vibrate(me.hp <= 0 ? [80, 40, 120] : 40);

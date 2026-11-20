@@ -8,7 +8,13 @@
   <style>
     body { overflow: hidden; }
     .layout { position: relative; z-index: 1; display: flex; gap: 22px; align-items: center; justify-content: center; height: 100%; padding: 22px; }
-    .sidebar { width: 250px; flex: none; display: flex; flex-direction: column; gap: 26px; }
+    .sidebar { width: 240px; flex: none; display: flex; flex-direction: column; gap: 24px; max-height: 100%; }
+    @media (max-height: 820px) {
+      .logo { display: none; }
+      .sidebar { gap: 22px; padding-top: 10px; }
+      #qr, .qr-placeholder { width: 140px !important; height: 140px !important; }
+      .slot { min-height: 38px !important; padding: 5px 9px !important; }
+    }
     .stage { position: relative; flex: 1; max-width: calc((100vh - 44px) * 1000 / 700); }
     .stage canvas { display: block; width: 100%; height: auto; border-radius: 26px; box-shadow: 0 8px 0 var(--ink), 0 22px 40px rgba(0,0,0,.3); }
 
@@ -39,7 +45,8 @@
     .slot.out { opacity: .5; }
     .slot .name { flex: 1; font-family: var(--font-title); font-size: 16px; letter-spacing: .5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .slot .stats { text-align: right; font-size: 12px; line-height: 1.2; }
-    .slot .hearts { color: var(--red); font-size: 14px; }
+    .slot .hearts { white-space: nowrap; }
+    .slot .heart { width: 14px; height: 12px; }
     .waiting { animation: pulse 1.6s ease-in-out infinite; }
     @keyframes pulse { 50% { opacity: .45; } }
 

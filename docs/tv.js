@@ -110,7 +110,7 @@
     for (let i = 0; i < TG.MAX_PLAYERS; i++) {
       const p = players[i];
       if (p) {
-        const hearts = '♥'.repeat(Math.max(0, p.lives)) || '💀';
+        const hearts = [0, 1, 2].map((k) => `<span class="heart${k < p.lives ? '' : ' empty'}"></span>`).join('');
         html += `<div class="slot filled${p.eliminated ? ' out' : ''}">
           <span class="dot" style="background:${p.color}"></span>
           <span class="name">${escapeHtml(p.name)}</span>
