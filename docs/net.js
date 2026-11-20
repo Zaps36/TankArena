@@ -310,6 +310,8 @@
         conn.on('open', () => {
           st.rtc = 'ready';
           status();
+          // Sudah masuk lewat relay: pindah ke jalur langsung yang lebih cepat.
+          if (active === 'relay' && joinMsg) sendVia('rtc', joinMsg);
         });
         conn.on('data', (data) => receive(parse(data), 'rtc'));
         conn.on('close', () => {

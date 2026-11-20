@@ -195,8 +195,14 @@ function step(game, dt) {
     if (dash && !p.lastDash && p.dashCooldown <= 0) {
       let dx = aiming && Math.hypot(ax, ay) > 0.3 ? ax : mx;
       let dy = aiming && Math.hypot(ax, ay) > 0.3 ? ay : my;
-      const dashLen = Math.hypot(dx, dy);
-      if (dashLen > 0.05) {
+      let dashLen = Math.hypot(dx, dy);
+      if (dashLen <= 0.05) {
+        // Analog dilepas: dash ke arah hadap tank.
+        dx = Math.cos(p.angle);
+        dy = Math.sin(p.angle);
+        dashLen = 1;
+      }
+      {
         dx /= dashLen;
         dy /= dashLen;
         for (let i = 0; i < DASH_STEPS; i++) {
