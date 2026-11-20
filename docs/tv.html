@@ -51,7 +51,7 @@
     @keyframes pulse { 50% { opacity: .45; } }
 
     #toast {
-      position: fixed; top: 18px; left: 50%; z-index: 10; transform: translate(-50%, -140%);
+      position: fixed; top: 18px; left: 50%; z-index: 10; transform: translate(-50%, calc(-100% - 40px));
       transition: transform .35s cubic-bezier(.3,1.6,.5,1);
       font-family: var(--font-title); font-size: 20px; letter-spacing: .5px;
     }
