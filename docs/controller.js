@@ -1,162 +1,171 @@
 (() => {
-  const roomId = new URLSearchParams(location.search).get('room');
   const $ = (id) => document.getElementById(id);
+  const room = TankNet.normalizeRoom(new URLSearchParams(location.search).get('room'));
   const joinEl = $('join');
   const gameEl = $('game');
   const nameInput = $('name');
   const joinBtn = $('join-btn');
-  const errEl = $('err');
-  const fireBtn = $('fire');
-  const dashBtn = $('dash');
+  const msgEl = $('msg');
+  const chipRtc = $('chip-rtc');
+  const chipRelay = $('chip-relay');
   const lifeEl = $('life');
   const hpFill = $('hp-fill');
-  const meName = $('me-name');
+  const linkEl = $('link');
+  const dashBtn = $('dash');
   const overlay = $('overlay');
-  $('room-code').textContent = roomId ? roomId.slice(0, 8).toUpperCase() : '-';
+  const overlayTitle = $('overlay-title');
+  const overlayText = $('overlay-text');
 
-  const input = { mx: 0, my: 0, ax: 0, ay: 0, aiming: false, fire: false, dash: false };
-  let peer = null;
-  let connection = null;
-  let sendTimer = null;
-  let playerId = null;
+  $('room-code').textContent = room || '-';
+  try {
+    nameInput.value = localStorage.getItem('tankarena-name') || '';
+  } catch (e) {
+    // abaikan
+  }
+
+  function message(text, isError) {
+    msgEl.textContent = text;
+    msgEl.classList.toggle('error', !!isError);
+  }
+
+  const input = TankTouch.attach({
+    left: $('left'),
+    leftKnob: $('left-knob'),
+    right: $('right'),
+    rightKnob: $('right-knob'),
+    fire: $('fire'),
+    dash: dashBtn,
+  });
+
+  if (!room) {
+    message('QR tidak valid. Scan ulang dari layar utama.', true);
+    return;
+  }
+
+  let joining = false;
+  let inGame = false;
   let lastHp = null;
+  let lastSent = '';
+  let lastSentAt = 0;
 
-  function error(message) {
-    errEl.textContent = message;
-    joinBtn.disabled = !peer || !peer.open;
+  const LABEL = {
+    connecting: ['...', 'wait'],
+    ready: ['siap', 'ready'],
+    unsupported: ['tidak didukung', 'bad'],
+    timeout: ['gagal', 'bad'],
+    error: ['gagal', 'bad'],
+    closed: ['putus', 'bad'],
+  };
+
+  function paintChip(chip, prefix, state) {
+    const [text, cls] = LABEL[state] || ['...', 'wait'];
+    chip.textContent = `${prefix}: ${text}`;
+    chip.className = `chip ${cls}`;
   }
 
-  function vibrate(ms) {
-    if (navigator.vibrate) navigator.vibrate(ms);
-  }
-
-  if (!roomId) {
-    error('QR tidak valid. Scan ulang dari layar utama.');
-  } else {
-    errEl.textContent = 'Menyambung...';
-    peer = new Peer();
-    peer.on('open', () => {
+  const net = TankNet.connectClient(room, {
+    onStatus(s) {
+      paintChip(chipRtc, 'Langsung', s.rtc);
+      paintChip(chipRelay, 'Relay', s.relay);
+      const usable = s.rtc === 'ready' || s.relay === 'ready';
+      if (!joining && !inGame) {
+        joinBtn.disabled = !usable;
+        if (usable) message('Siap! Isi nama lalu tekan MASUK.');
+        else if (s.rtc !== 'connecting' && s.relay !== 'connecting') message('Tidak bisa tersambung ke internet. Cek koneksi HP lalu muat ulang.', true);
+      }
+      if (inGame) {
+        linkEl.textContent = s.active === 'relay' ? 'RELAY' : s.active === 'rtc' ? 'LANGSUNG' : 'MENYAMBUNG';
+        linkEl.className = s.active === 'relay' ? 'relay' : s.active ? '' : 'lost';
+      }
+    },
+    onRetry(attempt) {
+      if (inGame) return;
+      message(`Belum ada jawaban dari layar utama, mencoba lagi (${attempt})...`);
+    },
+    onFail(text) {
+      joining = false;
       joinBtn.disabled = false;
-      errEl.textContent = '';
-    });
-    peer.on('error', (e) => error(`Koneksi gagal: ${e.type || 'tidak diketahui'}`));
-    peer.on('disconnected', () => error('Koneksi terputus. Muat ulang halaman.'));
-  }
+      message(text, true);
+    },
+    onMessage(msg) {
+      if (msg.t === 'error') {
+        joining = false;
+        joinBtn.disabled = false;
+        message(msg.message || 'Gagal masuk.', true);
+      } else if (msg.t === 'welcome') {
+        enterGame(msg);
+      } else if (msg.t === 'me') {
+        updateStatus(msg);
+      }
+    },
+  });
 
-  function showGame(message) {
-    playerId = message.playerId;
-    document.documentElement.style.setProperty('--me', message.color);
-    meName.textContent = message.name;
+  function enterGame(msg) {
+    joining = false;
+    if (!inGame) TankTouch.vibrate(60);
+    inGame = true;
+    document.documentElement.style.setProperty('--me', msg.color || '#ff4d5e');
+    $('me-name').textContent = msg.name || 'Kamu';
     joinEl.style.display = 'none';
     document.querySelector('.clouds').style.display = 'none';
     gameEl.style.display = 'block';
-    vibrate(60);
+    linkEl.textContent = net.transport() === 'relay' ? 'RELAY' : 'LANGSUNG';
+    linkEl.className = net.transport() === 'relay' ? 'relay' : '';
   }
 
-  function updateStatus(me) {
-    const ratio = Math.max(0, me.hp) / 100;
+  function updateStatus(s) {
+    const ratio = Math.max(0, s.hp) / 100;
     hpFill.style.width = `${ratio * 100}%`;
     hpFill.style.background = ratio > 0.6 ? 'var(--green)' : ratio > 0.3 ? 'var(--yellow)' : 'var(--red)';
-    lifeEl.innerHTML = [0, 1, 2].map((i) => `<span class="heart${i < me.lives ? '' : ' empty'}"></span>`).join('');
-    dashBtn.classList.toggle('cooldown', me.dashCooldown > 0);
-    overlay.style.display = me.eliminated ? 'grid' : 'none';
-    if (lastHp !== null && me.hp < lastHp) vibrate(me.hp <= 0 ? [80, 40, 120] : 40);
-    lastHp = me.hp;
+    lifeEl.innerHTML = [0, 1, 2].map((i) => `<span class="heart${i < s.lives ? '' : ' empty'}"></span>`).join('');
+    dashBtn.classList.toggle('cooldown', s.dash > 0);
+    if (lastHp !== null && s.hp < lastHp) TankTouch.vibrate(s.hp <= 0 ? [80, 40, 120] : 40);
+    lastHp = s.hp;
+
+    if (s.round) {
+      overlayTitle.textContent = s.round.title;
+      overlayTitle.style.color = s.round.color || 'var(--yellow)';
+      overlayText.textContent = s.round.text;
+      overlay.style.display = 'grid';
+    } else if (s.out) {
+      overlayTitle.textContent = 'KO!';
+      overlayTitle.style.color = 'var(--red)';
+      overlayText.textContent = 'Nyawa habis. Tunggu ronde berikutnya.';
+      overlay.style.display = 'grid';
+    } else {
+      overlay.style.display = 'none';
+    }
   }
 
   joinBtn.addEventListener('click', () => {
-    if (!peer || !roomId) return;
-    errEl.textContent = 'Menghubungkan ke layar utama...';
+    if (joining) return;
+    const name = nameInput.value.trim() || 'Pemain';
+    try {
+      localStorage.setItem('tankarena-name', name);
+    } catch (e) {
+      // abaikan
+    }
+    joining = true;
     joinBtn.disabled = true;
-    connection = peer.connect(roomId, { reliable: true });
-    connection.on('open', () => {
-      connection.send({ type: 'join', name: nameInput.value.trim() || 'Pemain' });
-      sendTimer = setInterval(() => {
-        if (connection && connection.open) connection.send({ type: 'input', input });
-      }, 50);
-    });
-    connection.on('data', (message) => {
-      if (!message) return;
-      if (message.type === 'error') return error(message.message);
-      if (message.type === 'welcome') showGame(message);
-      if (message.type === 'state' && playerId) {
-        const me = message.state.players.find((p) => p.id === playerId);
-        if (me) updateStatus(me);
-      }
-    });
-    connection.on('close', () => {
-      clearInterval(sendTimer);
-      gameEl.style.display = 'none';
-      joinEl.style.display = 'flex';
-      error('Koneksi ke layar utama terputus.');
-    });
-    connection.on('error', () => error('Koneksi controller gagal.'));
+    message('Menghubungkan ke layar utama...');
+    net.join(name);
+  });
+  nameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') joinBtn.click();
   });
 
-  function setupStick(stickId, knobId, onMove, onRelease) {
-    const stick = $(stickId);
-    const knob = $(knobId);
-    const radius = 75;
-    let pointerId = null;
-    function update(e) {
-      const rect = stick.getBoundingClientRect();
-      let dx = e.clientX - (rect.left + rect.width / 2);
-      let dy = e.clientY - (rect.top + rect.height / 2);
-      const len = Math.hypot(dx, dy);
-      if (len > radius) {
-        dx = (dx / len) * radius;
-        dy = (dy / len) * radius;
-      }
-      knob.style.left = `${radius + dx - 35}px`;
-      knob.style.top = `${radius + dy - 35}px`;
-      onMove(dx / radius, dy / radius);
-    }
-    function reset() {
-      pointerId = null;
-      knob.style.left = '';
-      knob.style.top = '';
-      onRelease();
-    }
-    stick.addEventListener('pointerdown', (e) => {
-      if (pointerId !== null) return;
-      pointerId = e.pointerId;
-      stick.setPointerCapture(e.pointerId);
-      update(e);
-    });
-    stick.addEventListener('pointermove', (e) => {
-      if (e.pointerId === pointerId) update(e);
-    });
-    const end = (e) => {
-      if (e.pointerId === pointerId) reset();
-    };
-    stick.addEventListener('pointerup', end);
-    stick.addEventListener('pointercancel', end);
-  }
-
-  setupStick('left', 'left-knob', (x, y) => { input.mx = x; input.my = y; }, () => { input.mx = 0; input.my = 0; });
-  setupStick('right', 'right-knob', (x, y) => { input.ax = x; input.ay = y; input.aiming = true; }, () => { input.ax = 0; input.ay = 0; input.aiming = false; });
-
-  fireBtn.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    input.fire = true;
-    fireBtn.classList.add('pressed');
-    vibrate(15);
-  });
-  const releaseFire = () => {
-    input.fire = false;
-    fireBtn.classList.remove('pressed');
-  };
-  fireBtn.addEventListener('pointerup', releaseFire);
-  fireBtn.addEventListener('pointercancel', releaseFire);
-  fireBtn.addEventListener('pointerleave', releaseFire);
-
-  dashBtn.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    dashBtn.classList.add('pressed');
-    setTimeout(() => dashBtn.classList.remove('pressed'), 120);
-    if (input.dash) return;
-    input.dash = true;
-    vibrate(25);
-    setTimeout(() => { input.dash = false; }, 90);
-  });
+  // Kirim input saat berubah, plus detak berkala supaya TV tahu HP masih ada.
+  setInterval(() => {
+    if (!inGame || !net.transport()) return;
+    const now = Date.now();
+    const minGap = net.transport() === 'relay' ? 90 : 45;
+    if (now - lastSentAt < minGap) return;
+    const packed = [input.mx, input.my, input.ax, input.ay].map((v) => Math.round(v * 100) / 100);
+    const flags = (input.aiming ? 1 : 0) | (input.fire ? 2 : 0) | (input.dash ? 4 : 0);
+    const key = packed.join(',') + '|' + flags;
+    if (key === lastSent && now - lastSentAt < 400) return;
+    lastSent = key;
+    lastSentAt = now;
+    net.send({ t: 'in', i: packed, f: flags });
+  }, 30);
 })();

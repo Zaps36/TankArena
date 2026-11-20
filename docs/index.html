@@ -43,8 +43,9 @@
     <section class="panel card pop-in" style="animation-delay:.1s">
       <div class="panel-header">PILIH MODE</div>
       <div class="buttons">
-        <button class="btn" id="solo"><span class="icon">🤖</span><span class="label">SOLO VS BOT<small>Latihan lawan 3 bot</small></span></button>
-        <a class="btn blue" href="tv.html"><span class="icon">📺</span><span class="label">MABAR + QR<small>Layar TV, HP jadi controller</small></span></a>
+        <a class="btn" href="tv.html?mode=bot"><span class="icon">🤖</span><span class="label">SOLO VS BOT<small>Layar ini + scan QR, HP jadi stik</small></span></a>
+        <a class="btn blue" href="tv.html"><span class="icon">📺</span><span class="label">MABAR + QR<small>2-4 HP jadi controller</small></span></a>
+        <button class="btn purple" id="solo"><span class="icon">📱</span><span class="label">MAIN DI HP SAJA<small>Tanpa layar tambahan, lawan bot</small></span></button>
       </div>
       <div class="tips">
         <span class="tip">🕹️ Analog jalan</span>
@@ -59,6 +60,12 @@
 
   <button class="btn red" id="back">✖ MENU</button>
   <div id="game-shell"><canvas id="game-canvas" width="1000" height="700"></canvas></div>
+  <div class="pad" id="pad" hidden>
+    <div class="stick move" id="left" data-label="JALAN"><div class="knob" id="left-knob"></div></div>
+    <div class="stick aim" id="right" data-label="BIDIK"><div class="knob" id="right-knob"></div></div>
+    <button class="action dash" id="dash"><span>DASH</span></button>
+    <button class="action fire" id="fire"><span>TEMBAK</span></button>
+  </div>
 
   <script>
     document.getElementById('solo').addEventListener('click', () => {
@@ -67,8 +74,12 @@
       document.getElementById('game-shell').style.display = 'grid';
       document.getElementById('back').style.display = 'block';
       document.getElementById('game-canvas').id = 'game';
+      const touchDevice = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+      document.getElementById('pad').hidden = !touchDevice;
+      document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
       const load = (src) => new Promise((ok) => { const s = document.createElement('script'); s.src = src; s.onload = ok; document.body.appendChild(s); });
-      load('game.js').then(() => load('render.js')).then(() => load('solo.js'));
+      load('game.js').then(() => load('render.js')).then(() => load('touchpad.js')).then(() => load('solo.js'));
     });
     document.getElementById('back').addEventListener('click', () => location.reload());
   </script>

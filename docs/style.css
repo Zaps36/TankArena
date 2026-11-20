@@ -192,3 +192,64 @@ html, body {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ------------------------------------------------------------------
+   Kontrol sentuh bersama (controller HP dan mode main di HP).
+   ------------------------------------------------------------------ */
+.pad { position: fixed; inset: 0; pointer-events: none; z-index: 4; touch-action: none; user-select: none; -webkit-user-select: none; }
+.pad > * { pointer-events: auto; }
+.stick {
+  position: absolute; bottom: calc(26px + env(safe-area-inset-bottom)); width: 150px; height: 150px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,.28) 0 40%, rgba(255,255,255,.14) 41%);
+  border: 5px solid var(--ink); box-shadow: inset 0 0 0 5px rgba(255,255,255,.45), 0 6px 0 var(--ink);
+  touch-action: none;
+}
+.stick::after {
+  content: attr(data-label); position: absolute; left: 50%; bottom: -28px; transform: translateX(-50%);
+  font-family: var(--font-title); font-size: 13px; color: #fff; letter-spacing: 1px;
+  -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill; white-space: nowrap; pointer-events: none;
+}
+.stick .knob {
+  position: absolute; width: 60px; height: 60px; border-radius: 50%; left: 40px; top: 40px; pointer-events: none;
+  background: radial-gradient(circle at 35% 30%, #fff8c8, var(--yellow) 45%, var(--yellow-dark));
+  border: 4px solid var(--ink); box-shadow: 0 5px 0 var(--ink);
+}
+.stick.aim .knob { background: radial-gradient(circle at 35% 30%, #d3ecff, var(--blue) 45%, var(--blue-dark)); }
+.stick.move { left: calc(22px + env(safe-area-inset-left)); }
+.stick.aim { right: calc(22px + env(safe-area-inset-right)); }
+
+.action {
+  position: absolute; display: grid; place-items: center; padding: 0; color: #fff;
+  font-family: var(--font-title); letter-spacing: 1px; border: 5px solid var(--ink); border-radius: 50%;
+  -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; touch-action: none;
+  transition: transform .08s, box-shadow .08s;
+}
+.action::before { content: ''; position: absolute; top: 8%; left: 18%; width: 64%; height: 30%; border-radius: 50%; background: rgba(255,255,255,.4); pointer-events: none; }
+.action span { position: relative; pointer-events: none; }
+.action.fire {
+  bottom: calc(206px + env(safe-area-inset-bottom)); right: calc(34px + env(safe-area-inset-right)); width: 98px; height: 98px; font-size: 17px;
+  background: radial-gradient(circle at 50% 35%, #ff98a2, var(--red) 55%, var(--red-dark));
+  box-shadow: inset 0 -6px 0 var(--red-dark), 0 7px 0 var(--ink);
+}
+.action.dash {
+  bottom: calc(206px + env(safe-area-inset-bottom)); left: calc(34px + env(safe-area-inset-left)); width: 82px; height: 82px; font-size: 15px;
+  background: radial-gradient(circle at 50% 35%, #d2b6ff, var(--purple) 55%, var(--purple-dark));
+  box-shadow: inset 0 -6px 0 var(--purple-dark), 0 7px 0 var(--ink);
+}
+.action.pressed { transform: translateY(6px) scale(.96); box-shadow: inset 0 -2px 0 rgba(0,0,0,.3), 0 1px 0 var(--ink); }
+.action.cooldown { filter: grayscale(.8) brightness(.85); }
+
+/* Layar pendek (HP landscape): kecilkan kontrol supaya tidak tumpang tindih. */
+@media (max-height: 430px) {
+  .stick { width: 126px; height: 126px; bottom: calc(22px + env(safe-area-inset-bottom)); }
+  .stick .knob { width: 52px; height: 52px; left: 32px; top: 32px; }
+  .action.fire { width: 84px; height: 84px; bottom: calc(168px + env(safe-area-inset-bottom)); font-size: 15px; }
+  .action.dash { width: 70px; height: 70px; bottom: calc(168px + env(safe-area-inset-bottom)); font-size: 13px; }
+}
+
+/* Status koneksi kecil. */
+.net-status { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; font-size: 12px; font-weight: 700; }
+.net-status .chip { padding: 2px 8px; border: 2px solid var(--ink); border-radius: 8px; background: #fff; }
+.net-status .chip.ready { background: #c9f7d2; }
+.net-status .chip.wait { background: #fff1b8; }
+.net-status .chip.bad { background: #ffd0d5; }

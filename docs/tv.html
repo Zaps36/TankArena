@@ -34,6 +34,8 @@
     .room { margin-top: 14px; font-size: 14px; font-weight: 700; }
     .room .badge { font-size: 13px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
     #loading { margin-top: 10px; font-size: 13px; font-weight: 700; color: var(--blue-dark); }
+    #room-link { margin-top: 6px; font-size: 10px; font-weight: 600; color: rgba(27,21,48,.55); word-break: break-all; }
+    .room .badge { letter-spacing: 3px; font-size: 16px !important; }
 
     .slots { padding: 28px 12px 12px; display: grid; gap: 9px; }
     .slot {
@@ -72,17 +74,20 @@
     <aside class="sidebar">
       <h1 class="title logo wobble">TANK ARENA</h1>
       <section class="panel join">
-        <div class="panel-header">SCAN UNTUK MAIN</div>
+        <div class="panel-header" id="join-header">SCAN UNTUK MAIN</div>
         <div class="qr-wrap bob">
           <img id="qr" alt="QR controller HP" hidden />
           <div class="qr-placeholder" id="qr-placeholder">⚙️</div>
         </div>
         <div class="room">Room <span class="badge" id="code">...</span></div>
         <div id="loading">Menyiapkan room...</div>
+        <div class="net-status" style="margin-top:8px"><span class="chip wait" id="chip-rtc">Langsung: ...</span><span class="chip wait" id="chip-relay">Relay: ...</span></div>
+        <div id="room-link"></div>
       </section>
       <section class="panel slots" id="slots">
-        <div class="panel-header" style="background: var(--orange); box-shadow: inset 0 -4px 0 #c9621a, 0 4px 0 var(--ink);">PEMAIN</div>
+        <div class="panel-header" style="background: var(--orange); box-shadow: inset 0 -4px 0 #c9621a, 0 4px 0 var(--ink);"><span id="mode-label">PEMAIN</span></div>
       </section>
+      <a class="btn red" href="index.html" style="padding:8px 14px;font-size:16px">✖ MENU</a>
     </aside>
     <main class="stage">
       <canvas id="game" width="1000" height="700"></canvas>
@@ -91,8 +96,10 @@
 
   <div id="toast"><span class="btn yellow" id="toast-text"></span></div>
 
-  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="vendor/peerjs.min.js"></script>
+  <script src="vendor/mqtt.min.js"></script>
   <script src="vendor/qrcode-generator.js"></script>
+  <script src="net.js"></script>
   <script src="game.js"></script>
   <script src="render.js"></script>
   <script src="tv.js"></script>

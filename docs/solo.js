@@ -17,6 +17,19 @@
   const mouse = { x: 0, y: 0, active: false, down: false };
   const touch = { move: null, aim: null }; // { id, sx, sy, dx, dy }
 
+  // Analog di layar (mode main di HP). Hanya aktif di perangkat sentuh.
+  const padEl = document.getElementById('pad');
+  const pad = padEl && !padEl.hidden && window.TankTouch
+    ? window.TankTouch.attach({
+      left: document.getElementById('left'),
+      leftKnob: document.getElementById('left-knob'),
+      right: document.getElementById('right'),
+      rightKnob: document.getElementById('right-knob'),
+      fire: document.getElementById('fire'),
+      dash: document.getElementById('dash'),
+    })
+    : null;
+
   function newGame() {
     state = TG.createGame();
     TG.addPlayer(state, HUMAN_ID, 'Kamu');
@@ -67,6 +80,19 @@
         aimY /= len;
         aiming = true;
       }
+    }
+
+    if (pad) {
+      if (Math.hypot(pad.mx, pad.my) > 0.05) {
+        mx = pad.mx;
+        my = pad.my;
+      }
+      if (pad.aiming) {
+        aimX = pad.ax;
+        aimY = pad.ay;
+        aiming = true;
+      }
+      return { mx, my, ax: aimX, ay: aimY, aiming, fire: fire || pad.fire, dash: dash || pad.dash };
     }
 
     return { mx, my, ax: aimX, ay: aimY, aiming, fire, dash };
