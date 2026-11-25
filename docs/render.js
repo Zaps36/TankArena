@@ -206,7 +206,7 @@
     function tankState(id) {
       let t = tanks.get(id);
       if (!t) {
-        t = { x: null, y: null, bodyAngle: 0, tread: 0, recoil: 0, flash: 0, hp: null, ghosts: [], blinkSeed: Math.random() * 5 };
+        t = { x: null, y: null, bodyAngle: 0, turret: null, aimA: 0, aimLen: 0, tread: 0, recoil: 0, flash: 0, hp: null, ghosts: [], blinkSeed: Math.random() * 5 };
         tanks.set(id, t);
       }
       return t;
@@ -257,6 +257,7 @@
           const t = tankState(p.id);
           t.recoil = 9;
           const a = typeof ev.angle === 'number' ? ev.angle : p.angle;
+          t.turret = a; // laras langsung menghadap arah tembakan
           const mx = p.x + Math.cos(a) * 36;
           const my = p.y + Math.sin(a) * 36;
           puff(mx, my, '#fff6c2', { count: 5, speed: 50, size: 7, life: 0.3, grow: 20 });
@@ -324,6 +325,14 @@
         t.x = p.x;
         t.y = p.y;
         t.hp = p.hp;
+        // Laras berputar halus menuju sudut terbaru (data dari HP datang ~40x/detik,
+        // layar digambar 60x/detik; tanpa ini laras dan garis bidik terlihat patah-patah).
+        if (t.turret === null) t.turret = p.angle;
+        const turn = Math.atan2(Math.sin(p.angle - t.turret), Math.cos(p.angle - t.turret));
+        t.turret += turn * (1 - Math.exp(-dt * 28));
+        // Garis bidik muncul dan hilang dengan transisi, tidak langsung.
+        const aimTarget = p.aim && p.alive ? 1 : 0;
+        t.aimA += (aimTarget - t.aimA) * (1 - Math.exp(-dt * (aimTarget ? 18 : 12)));
         t.recoil = Math.max(0, t.recoil - dt * 40);
         t.flash = Math.max(0, t.flash - dt * 6);
         t.ghosts = t.ghosts.filter((g) => (g.life -= dt) > 0);
@@ -446,7 +455,7 @@
 
       // Laras dan kubah.
       ctx.save();
-      ctx.rotate(p.angle);
+      ctx.rotate(t.turret === null ? p.angle : t.turret);
       const rec = t.recoil;
       ctx.fillStyle = '#3b3550';
       ctx.strokeStyle = INK;
@@ -468,8 +477,9 @@
       ctx.stroke();
 
       // Mata yang melirik ke arah bidik dan sesekali berkedip.
-      const lookX = Math.cos(p.angle) * 2.5;
-      const lookY = Math.sin(p.angle) * 2.5;
+      const look = t.turret === null ? p.angle : t.turret;
+      const lookX = Math.cos(look) * 2.5;
+      const lookY = Math.sin(look) * 2.5;
       const blink = ((now / 1000 + t.blinkSeed) % 4) > 3.85;
       ctx.fillStyle = INK;
       for (const ex of [-4, 4]) {
@@ -544,11 +554,16 @@
     // Garis bidik putus-putus saat pemain menahan stik SERANG (seperti Brawl Stars).
     function drawAimGuides(snap, now) {
       for (const p of snap.players) {
-        if (!p.alive || !p.aim) continue;
-        const len = 260;
-        const ex = p.x + Math.cos(p.angle) * len;
-        const ey = p.y + Math.sin(p.angle) * len;
+        if (!p.alive) continue;
+        const t = tanks.get(p.id);
+        if (!t || t.aimA < 0.02) continue;
+        // Pakai sudut laras yang sudah dihaluskan; garis memanjang saat muncul.
+        const a = t.turret === null ? p.angle : t.turret;
+        const len = 60 + 200 * t.aimA;
+        const ex = p.x + Math.cos(a) * len;
+        const ey = p.y + Math.sin(a) * len;
         ctx.save();
+        ctx.globalAlpha = Math.min(1, t.aimA * 1.2);
         ctx.lineCap = 'round';
         ctx.strokeStyle = 'rgba(27, 21, 48, .35)';
         ctx.lineWidth = 16;
@@ -560,13 +575,13 @@
         ctx.lineDashOffset = -now / 25;
         ctx.strokeStyle = p.color;
         ctx.lineWidth = 7;
-        ctx.globalAlpha = p.fireCooldown > 0 ? 0.35 : 0.9;
+        ctx.globalAlpha = t.aimA * (p.fireCooldown > 0 ? 0.35 : 0.9);
         ctx.beginPath();
-        ctx.moveTo(p.x + Math.cos(p.angle) * 30, p.y + Math.sin(p.angle) * 30);
+        ctx.moveTo(p.x + Math.cos(a) * 30, p.y + Math.sin(a) * 30);
         ctx.lineTo(ex, ey);
         ctx.stroke();
         ctx.setLineDash([]);
-        ctx.globalAlpha = 1;
+        ctx.globalAlpha = Math.min(1, t.aimA * 1.2);
         ctx.fillStyle = p.color;
         ctx.strokeStyle = INK;
         ctx.lineWidth = 3;
