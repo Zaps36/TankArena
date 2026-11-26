@@ -306,7 +306,8 @@ html, body {
 .ov-board-pts { font-family: var(--font-title); font-size: 1.15em; color: var(--orange); -webkit-text-stroke: 1px var(--ink); paint-order: stroke fill; }
 
 /* Lobby */
-.ov-lobby { position: absolute; left: 50%; bottom: 4cqh; transform: translateX(-50%); width: min(92cqw, 30em); }
+/* Ditengahkan dengan margin auto (bukan transform), karena animasi pop-in memakai transform. */
+.ov-lobby { position: absolute; left: 0; right: 0; margin: 0 auto; bottom: 4cqh; width: min(92cqw, 30em); }
 .ov-card { padding: 1.9em 1.2em 1em; text-align: center; }
 .ov-card.wide { width: min(94cqw, 34em); }
 .ov-lobby-text { font-weight: 700; font-size: .95em; margin-bottom: .5em; }

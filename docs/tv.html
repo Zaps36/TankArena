@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Tank Arena - Layar Utama</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=20261127a" />
   <style>
     body { overflow: hidden; }
     .layout { position: relative; z-index: 1; display: flex; gap: 22px; align-items: center; justify-content: center; height: 100%; padding: 22px; }
@@ -15,7 +15,14 @@
       #qr, .qr-placeholder { width: 140px !important; height: 140px !important; }
       .slot { min-height: 38px !important; padding: 5px 9px !important; }
     }
-    .stage { position: relative; flex: 1; max-width: calc((100vh - 44px) * 1000 / 700); }
+    /* Arena selalu 10:7. Lebarnya = yang terkecil antara ruang horizontal yang tersisa
+       (layar dikurangi padding 2x22, sidebar 240, celah 22) dan tinggi layar x 10/7,
+       jadi arena tidak pernah terpotong. Saat main, sidebar hilang dan arena membesar. */
+    .stage {
+      position: relative; flex: none;
+      width: min(calc(100vw - 306px), calc((100vh - 44px) * 10 / 7));
+      transition: width .5s cubic-bezier(.3, 1.2, .5, 1);
+    }
     .stage canvas { display: block; width: 100%; height: auto; border-radius: 26px; box-shadow: 0 8px 0 var(--ink), 0 22px 40px rgba(0,0,0,.3); }
     .stage .ov { border-radius: 26px; }
 
@@ -61,17 +68,30 @@
     #toast.show { transform: translate(-50%, 0); }
     #toast .btn { width: auto; padding: 9px 18px; font-size: 18px; pointer-events: none; }
 
+    /* Layar pendek (laptop kecil / jendela browser rendah): sidebar dipadatkan supaya muat. */
+    @media (max-height: 620px) {
+      .sidebar { gap: 18px; padding-top: 14px; }
+      #qr, .qr-placeholder { width: 108px !important; height: 108px !important; }
+      .join { padding: 24px 10px 10px; }
+      .room { margin-top: 8px; }
+      #loading { margin-top: 4px; font-size: 12px; }
+      #room-link { display: none; }
+      .slots { padding: 22px 10px 10px; gap: 6px; }
+      .slot { min-height: 30px !important; padding: 3px 8px !important; }
+      .slot .name { font-size: 14px; }
+    }
+
     @media (max-width: 860px) {
       .layout { flex-direction: column; overflow: auto; height: auto; min-height: 100%; }
       .sidebar { width: 100%; max-width: 420px; }
-      .stage { width: 100%; max-width: none; }
+      .stage { width: min(calc(100vw - 44px), calc((100vh - 44px) * 10 / 7)); }
     }
 
     /* Saat game berjalan (bukan lobby): hanya arena, memenuhi layar, tanpa panel QR/pemain. */
     body.playing.sky { background: #120c24; animation: none; }
     body.playing .clouds, body.playing .sidebar { display: none; }
     body.playing .layout { flex-direction: row; gap: 0; padding: 0; height: 100%; min-height: 0; overflow: hidden; }
-    body.playing .stage { flex: none; width: min(100vw, calc(100vh * 1000 / 700)); max-width: none; }
+    body.playing .stage { width: min(100vw, calc(100vh * 10 / 7)); max-width: none; }
     body.playing .stage canvas { border-radius: 0; box-shadow: none; }
     body.playing .stage .ov { border-radius: 0; }
   </style>
@@ -108,16 +128,16 @@
 
   <div id="toast"><span class="btn yellow" id="toast-text"></span></div>
 
-  <script src="vendor/peerjs.min.js"></script>
-  <script src="vendor/mqtt.min.js"></script>
-  <script src="vendor/qrcode-generator.js"></script>
-  <script src="net.js"></script>
-  <script src="maps.js"></script>
-  <script src="game.js"></script>
-  <script src="match.js"></script>
-  <script src="mapart.js"></script>
-  <script src="render.js"></script>
-  <script src="overlay.js"></script>
-  <script src="tv.js"></script>
+  <script src="vendor/peerjs.min.js?v=20261127a"></script>
+  <script src="vendor/mqtt.min.js?v=20261127a"></script>
+  <script src="vendor/qrcode-generator.js?v=20261127a"></script>
+  <script src="net.js?v=20261127a"></script>
+  <script src="maps.js?v=20261127a"></script>
+  <script src="game.js?v=20261127a"></script>
+  <script src="match.js?v=20261127a"></script>
+  <script src="mapart.js?v=20261127a"></script>
+  <script src="render.js?v=20261127a"></script>
+  <script src="overlay.js?v=20261127a"></script>
+  <script src="tv.js?v=20261127a"></script>
 </body>
 </html>
