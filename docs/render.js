@@ -468,6 +468,39 @@
 
       drawHearts(ctx, p.x, p.y + 33, Math.max(0, p.lives), 11);
 
+      // Penanda DASH siap: lingkaran ungu kecil berpetir di kanan bar HP.
+      // Muncul dengan "pop" saat dash baru siap, hilang selama cooldown.
+      const ready = !(p.dashCooldown > 0);
+      if (ready && !t.dashReady) t.dashPop = 1;
+      t.dashReady = ready;
+      if (ready) {
+        t.dashPop = Math.max(0, (t.dashPop || 0) - 0.06);
+        const s = 1 + Math.sin((1 - t.dashPop) * Math.PI) * t.dashPop * 0.9;
+        const bx = p.x + hpW / 2 + 10;
+        const by = p.y - 29;
+        ctx.save();
+        ctx.translate(bx, by);
+        ctx.scale(s, s);
+        ctx.fillStyle = '#a66bff';
+        ctx.strokeStyle = INK;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, 6.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.moveTo(1.2, -4.2);
+        ctx.lineTo(-2.6, 0.6);
+        ctx.lineTo(-0.2, 0.6);
+        ctx.lineTo(-1.2, 4.2);
+        ctx.lineTo(2.6, -0.8);
+        ctx.lineTo(0.2, -0.8);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
       if (highlight) {
         const bob = Math.sin(now / 180) * 4;
         ctx.fillStyle = '#ffd23f';

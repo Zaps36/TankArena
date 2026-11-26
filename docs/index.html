@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Tank Arena</title>
-  <link rel="stylesheet" href="style.css?v=20261127d" />
+  <link rel="stylesheet" href="style.css?v=20261127e" />
   <style>
     body { display: grid; place-items: center; min-height: 100%; padding: 32px 18px; overflow: hidden; }
     .menu { position: relative; z-index: 1; width: min(420px, 100%); text-align: center; }
@@ -100,7 +100,7 @@
       document.body.style.overflow = 'hidden';
       document.body.style.touchAction = 'none';
       const load = (src) => new Promise((ok) => { const s = document.createElement('script'); s.src = src; s.onload = ok; document.body.appendChild(s); });
-      load('maps.js?v=20261127d').then(() => load('game.js?v=20261127d')).then(() => load('match.js?v=20261127d')).then(() => load('mapart.js?v=20261127d')).then(() => load('render.js?v=20261127d')).then(() => load('overlay.js?v=20261127d')).then(() => load('touchpad.js?v=20261127d')).then(() => load('solo.js?v=20261127d'));
+      load('maps.js?v=20261127e').then(() => load('game.js?v=20261127e')).then(() => load('match.js?v=20261127e')).then(() => load('mapart.js?v=20261127e')).then(() => load('render.js?v=20261127e')).then(() => load('overlay.js?v=20261127e')).then(() => load('touchpad.js?v=20261127e')).then(() => load('solo.js?v=20261127e'));
     });
     document.getElementById('back').addEventListener('click', () => location.reload());
   </script>
