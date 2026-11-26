@@ -255,7 +255,7 @@
     const snapshot = TG.snapshot(match.game);
     // Selama game berjalan, sidebar (QR dan daftar pemain) disembunyikan agar tidak mengganggu.
     document.body.classList.toggle('playing', match.phase !== 'lobby');
-    renderer.draw(snapshot, { emptyText: match.participants.length ? null : 'Scan QR untuk masuk arena!' });
+    renderer.draw(snapshot, {});
     overlay.render(match);
     updateSlots();
     requestAnimationFrame(frame);

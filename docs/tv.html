@@ -81,6 +81,12 @@
       .slot .name { font-size: 14px; }
     }
 
+    /* Layar sangat pendek: daftar pemain disembunyikan (sudah tampil di kartu LOBBY)
+       supaya tombol LAYAR PENUH dan MENU tetap terlihat. */
+    @media (max-height: 560px) {
+      .slots { display: none; }
+    }
+
     @media (max-width: 860px) {
       .layout { flex-direction: column; overflow: auto; height: auto; min-height: 100%; }
       .sidebar { width: 100%; max-width: 420px; }
