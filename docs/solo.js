@@ -83,7 +83,7 @@
   function tick() {
     match.setInput(HUMAN_ID, humanInput());
     const events = match.update(TICK);
-    if (match.round !== rendererRound && match.phase === 'intro') {
+    if (match.round !== rendererRound && match.phase === 'roulette') {
       rendererRound = match.round;
       renderer = TankRender.createRenderer(canvas);
     }

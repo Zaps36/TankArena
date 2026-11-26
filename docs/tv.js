@@ -214,7 +214,7 @@
     const before = match.phase;
     const events = match.update(TICK);
     // Ronde baru = arena baru; renderer di-reset supaya efek lama hilang.
-    if (match.round !== rendererRound && match.phase === 'intro') {
+    if (match.round !== rendererRound && match.phase === 'roulette') {
       rendererRound = match.round;
       renderer = TankRender.createRenderer(canvas);
     }

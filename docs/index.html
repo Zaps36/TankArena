@@ -81,7 +81,7 @@
       document.body.style.overflow = 'hidden';
       document.body.style.touchAction = 'none';
       const load = (src) => new Promise((ok) => { const s = document.createElement('script'); s.src = src; s.onload = ok; document.body.appendChild(s); });
-      load('game.js').then(() => load('match.js')).then(() => load('render.js')).then(() => load('overlay.js')).then(() => load('touchpad.js')).then(() => load('solo.js'));
+      load('maps.js').then(() => load('game.js')).then(() => load('match.js')).then(() => load('mapart.js')).then(() => load('render.js')).then(() => load('overlay.js')).then(() => load('touchpad.js')).then(() => load('solo.js'));
     });
     document.getElementById('back').addEventListener('click', () => location.reload());
   </script>

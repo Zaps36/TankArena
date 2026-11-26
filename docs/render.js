@@ -100,108 +100,8 @@
     let shake = 0;
     let latest = null;
     let background = null;
+    let bgMapId = null;
     let lastTime = performance.now();
-
-    function buildBackground(obstacles) {
-      const bg = document.createElement('canvas');
-      bg.width = W;
-      bg.height = H;
-      const b = bg.getContext('2d');
-
-      // Rumput kotak-kotak.
-      for (let y = 0; y < H; y += 50) {
-        for (let x = 0; x < W; x += 50) {
-          b.fillStyle = ((x + y) / 50) % 2 === 0 ? '#93d66b' : '#87cb5f';
-          b.fillRect(x, y, 50, 50);
-        }
-      }
-
-      // Rumput kecil dan bunga sebagai hiasan.
-      const rand = seeded(7);
-      const blocked = (x, y) => obstacles.some((o) => x > o.x - 14 && x < o.x + o.w + 14 && y > o.y - 14 && y < o.y + o.h + 14);
-      for (let i = 0; i < 90; i++) {
-        const x = 20 + rand() * (W - 40);
-        const y = 20 + rand() * (H - 40);
-        if (blocked(x, y)) continue;
-        if (rand() < 0.2) {
-          const colors = ['#ffffff', '#ffd23f', '#ff8fb1'];
-          b.fillStyle = colors[Math.floor(rand() * colors.length)];
-          for (let k = 0; k < 5; k++) {
-            const a = (k / 5) * Math.PI * 2;
-            b.beginPath();
-            b.arc(x + Math.cos(a) * 3.5, y + Math.sin(a) * 3.5, 2.6, 0, Math.PI * 2);
-            b.fill();
-          }
-          b.fillStyle = '#ff9f1c';
-          b.beginPath();
-          b.arc(x, y, 2.2, 0, Math.PI * 2);
-          b.fill();
-        } else {
-          b.strokeStyle = '#5fa843';
-          b.lineWidth = 2.5;
-          b.lineCap = 'round';
-          b.beginPath();
-          b.moveTo(x - 5, y + 3); b.lineTo(x - 3, y - 4);
-          b.moveTo(x, y + 3); b.lineTo(x, y - 6);
-          b.moveTo(x + 5, y + 3); b.lineTo(x + 3, y - 4);
-          b.stroke();
-        }
-      }
-
-      // Peti kayu.
-      for (const o of obstacles) {
-        b.fillStyle = 'rgba(27, 21, 48, .22)';
-        roundRect(b, o.x + 5, o.y + 8, o.w, o.h, 10);
-        b.fill();
-
-        b.fillStyle = '#d0904f';
-        b.strokeStyle = INK;
-        b.lineWidth = 4;
-        roundRect(b, o.x, o.y, o.w, o.h, 10);
-        b.fill();
-        b.stroke();
-
-        b.save();
-        roundRect(b, o.x, o.y, o.w, o.h, 10);
-        b.clip();
-        b.strokeStyle = '#a8692f';
-        b.lineWidth = 3;
-        const horizontal = o.w >= o.h;
-        const span = horizontal ? o.h : o.w;
-        for (let d = 14; d < span - 6; d += 14) {
-          b.beginPath();
-          if (horizontal) { b.moveTo(o.x + 6, o.y + d); b.lineTo(o.x + o.w - 6, o.y + d); }
-          else { b.moveTo(o.x + d, o.y + 6); b.lineTo(o.x + d, o.y + o.h - 6); }
-          b.stroke();
-        }
-        b.fillStyle = 'rgba(255, 255, 255, .28)';
-        b.fillRect(o.x, o.y, o.w, 6);
-        b.restore();
-
-        b.strokeStyle = '#8a5426';
-        b.lineWidth = 4;
-        roundRect(b, o.x + 7, o.y + 7, o.w - 14, o.h - 14, 6);
-        b.stroke();
-
-        b.fillStyle = '#6b3f1c';
-        for (const [cx, cy] of [[o.x + 11, o.y + 11], [o.x + o.w - 11, o.y + 11], [o.x + 11, o.y + o.h - 11], [o.x + o.w - 11, o.y + o.h - 11]]) {
-          b.beginPath();
-          b.arc(cx, cy, 3, 0, Math.PI * 2);
-          b.fill();
-        }
-      }
-
-      // Bingkai arena.
-      b.strokeStyle = INK;
-      b.lineWidth = 10;
-      roundRect(b, 5, 5, W - 10, H - 10, 22);
-      b.stroke();
-      b.strokeStyle = 'rgba(255, 255, 255, .35)';
-      b.lineWidth = 3;
-      roundRect(b, 13, 13, W - 26, H - 26, 16);
-      b.stroke();
-      return bg;
-    }
 
     function tankState(id) {
       let t = tanks.get(id);
@@ -281,17 +181,39 @@
             floater(victim.x, victim.y - 30, 'KO!', '#ffd23f', 34);
             shake = Math.max(shake, 12);
           }
-          addFeed(killer, victim);
+          addFeed(killer, victim, ev.cause);
         } else if (ev.type === 'respawn') {
           const p = playerById(ev.id);
           if (p) ring(p.x, p.y, p.color, 60);
+        } else if (ev.type === 'portal') {
+          // Teleport: cincin di mulut masuk dan keluar.
+          const color = ev.color || '#a66bff';
+          ring(ev.fx, ev.fy, color, ev.bullet ? 22 : 46);
+          ring(ev.tx, ev.ty, '#ffffff', ev.bullet ? 22 : 46);
+          if (!ev.bullet) {
+            puff(ev.tx, ev.ty, '#d2b6ff', { count: 8, speed: 70, size: 7, life: 0.45, grow: 14 });
+            const t = tanks.get(ev.id);
+            if (t) {
+              t.x = ev.tx;
+              t.y = ev.ty;
+            }
+          }
         }
       }
     }
 
-    function addFeed(killer, victim) {
+    function addFeed(killer, victim, cause) {
       if (!victim) return;
-      feed.push({ killer: killer ? killer.name : '?', kColor: killer ? killer.color : '#fff', victim: victim.name, vColor: victim.color, life: 4 });
+      let name = killer ? killer.name : '?';
+      let color = killer ? killer.color : '#fff';
+      if (cause === 'lava') {
+        name = 'Lava';
+        color = '#ff8a2b';
+      } else if (cause === 'self') {
+        name = 'Pantulan';
+        color = '#3ff0ff';
+      }
+      feed.push({ killer: name, kColor: color, victim: victim.name, vColor: victim.color, life: 4 });
       if (feed.length > 4) feed.shift();
     }
 
@@ -315,12 +237,18 @@
             t.tread += dist;
           }
         }
-        if (t.hp !== null && p.hp < t.hp && p.alive !== false) {
+        // Kena peluru (turun banyak sekaligus): angka damage + kilat.
+        // Lava mengurangi HP sedikit demi sedikit, jadi tidak memunculkan angka tiap frame.
+        if (t.hp !== null && t.hp - p.hp >= 10) {
           t.flash = 1;
-          sparks(p.x, p.y, 7, '#ffd23f');
-          floater(p.x + 14, p.y - 26, `-${t.hp - p.hp}`, '#ff4d5e', 20);
-        } else if (t.hp !== null && p.hp < t.hp) {
-          t.flash = 1;
+          if (p.alive !== false) {
+            sparks(p.x, p.y, 7, '#ffd23f');
+            floater(p.x + 14, p.y - 26, `-${t.hp - p.hp}`, '#ff4d5e', 20);
+          }
+        }
+        if (p.burn && p.alive && Math.random() < dt * 14) {
+          // Api kecil naik dari tank yang terbakar lava.
+          particles.push({ kind: 'puff', x: p.x + (Math.random() - 0.5) * 26, y: p.y + (Math.random() - 0.5) * 20, vx: (Math.random() - 0.5) * 20, vy: -60 - Math.random() * 40, r: 5 + Math.random() * 4, grow: 8, life: 0.45, max: 0.45, color: Math.random() < 0.5 ? '#ff8a2b' : '#ffd23f' });
         }
         t.x = p.x;
         t.y = p.y;
@@ -513,6 +441,10 @@
       }
       ctx.restore();
 
+      // Tank di dalam semak: label nama dan bar HP disembunyikan
+      // (kecuali tank milik pemain sendiri di mode solo).
+      if (p.hid && !highlight) return;
+
       // Label nama dan bar HP.
       ctx.font = `14px ${TITLE_FONT}`;
       const nameW = Math.max(44, ctx.measureText(p.name).width + 16);
@@ -664,6 +596,10 @@
       } else if (ev.kind === 'shield') {
         ring(ev.x, ev.y, '#a8e6ff', 26);
         sparks(ev.x, ev.y, 5, '#a8e6ff');
+      } else if (ev.kind === 'bounce') {
+        // Pantulan di dinding neon: kilatan kecil, peluru tetap terbang.
+        ring(ev.x, ev.y, '#ffffff', 18);
+        sparks(ev.x, ev.y, 5, color);
       } else if (ev.kind === 'wall') {
         ring(ev.x, ev.y, color, 22);
         puff(ev.x, ev.y, '#e8c79a', { count: 5, speed: 60, size: 6, life: 0.4, grow: 12 });
@@ -837,15 +773,27 @@
       const dt = Math.min(0.1, (now - lastTime) / 1000);
       lastTime = now;
       latest = snap;
-      if (!background) background = buildBackground(snap.obstacles);
+      const map = root.TankMaps.get(snap.mapId);
+      if (bgMapId !== map.id) {
+        // Peta baru: bangun ulang latar dan buang efek dari peta sebelumnya.
+        background = root.TankArt.buildBackground(map);
+        bgMapId = map.id;
+        tanks.clear();
+        bulletTrail.clear();
+        particles = [];
+        floaters = [];
+      }
       update(dt, snap);
 
       ctx.save();
       if (shake > 0) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
       ctx.drawImage(background, 0, 0);
+      root.TankArt.drawFx(ctx, map, now);
+      root.TankArt.drawMovers(ctx, snap.movers);
       drawAimGuides(snap, now);
       for (const p of snap.players) drawTank(p, now, p.id === opts.highlightId);
       drawBullets(snap, now);
+      root.TankArt.drawBushes(ctx, map, now);
       drawParticles();
       drawFloaters();
       ctx.restore();

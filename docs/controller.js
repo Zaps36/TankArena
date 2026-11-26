@@ -23,6 +23,7 @@
   const overlayText = $('overlay-text');
   const overlayExtra = $('overlay-extra');
   const overlayBtns = $('overlay-btns');
+  const tipEl = $('tip');
 
   $('room-code').textContent = room || '-';
   try {
@@ -197,7 +198,15 @@
     dashBtn.classList.toggle('cooldown', s.dash > 0);
     if (prev && prev.phase !== s.phase && (s.phase === 'intro' || s.phase === 'lobby')) pad.resetCooldown();
     else pad.syncCooldown(s.fire);
-    if (s.phase === 'play' && lastHp !== null && s.hp < lastHp) TankTouch.vibrate(s.hp <= 0 ? [80, 40, 120] : 40);
+    // Getar hanya untuk kena tembak / mati, bukan untuk lava yang membakar sedikit-sedikit.
+    if (s.phase === 'play' && lastHp !== null && (lastHp - s.hp >= 10 || (s.hp <= 0 && lastHp > 0))) TankTouch.vibrate(s.hp <= 0 ? [80, 40, 120] : 40);
+    // Tips efek arena saat arena terpilih, intro, dan hitung mundur.
+    const showTip = s.map && ((s.phase === 'roulette' && s.mapReady) || s.phase === 'intro' || s.phase === 'countdown');
+    tipEl.hidden = !showTip;
+    if (showTip && tipEl.dataset.id !== s.map.id) {
+      tipEl.dataset.id = s.map.id;
+      tipEl.textContent = `${s.map.icon} ${s.map.tip}`;
+    }
     lastHp = s.hp;
 
     // Lobby
@@ -214,14 +223,18 @@
     if (s.phase === 'play' || s.phase === 'countdown' || s.phase === 'intro') {
       roundPill.hidden = false;
       const left = s.left === null ? '' : ` · ${Math.floor(s.left / 60)}:${String(s.left % 60).padStart(2, '0')}`;
-      roundPill.textContent = `RONDE ${s.round}/${s.rounds}${left}`;
+      const mapName = s.map ? ` · ${s.map.icon} ${s.map.name}` : '';
+      roundPill.textContent = `RONDE ${s.round}/${s.rounds}${mapName}${left}`;
       roundPill.classList.toggle('hurry', s.left !== null && s.left <= 10);
     } else {
       roundPill.hidden = true;
     }
 
     // Teks besar
-    if (s.phase === 'intro') showBig(s.round === s.rounds ? 'RONDE TERAKHIR!' : `RONDE ${s.round}`, 'small');
+    if (s.phase === 'roulette') {
+      showBig(s.mapReady && s.map ? `${s.map.icon} ${s.map.name}` : '🎲 MENGACAK ARENA...', 'small');
+      if (prev && !prev.mapReady && s.mapReady) TankTouch.vibrate(70);
+    } else if (s.phase === 'intro') showBig(s.round === s.rounds ? 'RONDE TERAKHIR!' : `RONDE ${s.round}`, 'small');
     else if (s.phase === 'countdown' || (s.phase === 'play' && s.cd === 'GO!')) {
       showBig(String(s.cd), s.cd === 'GO!' ? 'go' : '');
       if (!prev || prev.cd !== s.cd) TankTouch.vibrate(s.cd === 'GO!' ? 90 : 25);

@@ -38,6 +38,7 @@
     function hud(m) {
       return `<div class="ov-hud">
         <span class="ov-pill"><b>RONDE ${m.round}</b>/${m.rounds}</span>
+        <span class="ov-pill">${m.mapInfo().icon} ${esc(m.mapInfo().name)}</span>
         <span class="ov-pill ov-timer" data-ref="timer">1:30</span>
       </div>${o.showStandings ? '<div class="ov-mini" data-ref="mini"></div>' : ''}`;
     }
@@ -64,12 +65,48 @@
 
     function introHtml(m) {
       const last = m.round === m.rounds;
+      const map = m.mapInfo();
       return `<div class="ov-dim"></div>
       <div class="ov-band${last ? ' last' : ''}">
         <div class="ov-band-inner">
           <div class="ov-band-sub">${last ? 'RONDE TERAKHIR!' : 'BERSIAP!'}</div>
           <div class="ov-band-title">RONDE ${m.round}</div>
-          <div class="ov-band-sub small">dari ${m.rounds} ronde</div>
+          <div class="ov-band-sub small">${map.icon} ${esc(map.name)} · dari ${m.rounds} ronde</div>
+        </div>
+      </div>`;
+    }
+
+    // Acak arena: deretan kartu arena digulir lalu melambat dan berhenti di arena terpilih
+    // (mirip roda undian di game party). Arena yang sudah dimainkan diberi cap SUDAH.
+    function rouletteHtml(m) {
+      const map = m.mapInfo();
+      const used = new Set(m.usedMaps());
+      const order = TankMaps.shuffle(TankMaps.IDS);
+      const LOOPS = 6;
+      const cards = [];
+      for (let l = 0; l < LOOPS; l++) for (const id of order) cards.push(id);
+      // Berhenti di putaran ke-5 supaya gulungan terasa panjang.
+      const target = (LOOPS - 2) * order.length + order.indexOf(map.id);
+      const html = cards.map((id, i) => {
+        const info = TankMaps.get(id);
+        const cls = i === target ? ' target' : used.has(id) ? ' used' : '';
+        return `<div class="ov-rl-card${cls}" style="--a:${info.accent}">
+          <img src="${TankArt.preview(id, 260)}" alt="">
+          <span class="ov-rl-name">${info.icon} ${esc(info.name)}</span>
+          ${used.has(id) ? '<span class="ov-rl-stamp">SUDAH</span>' : ''}
+        </div>`;
+      }).join('');
+      const spin = TankMatch.ROULETTE_SPIN;
+      return `<div class="ov-dim dark"></div>
+      <div class="ov-roulette" style="--spin:${spin}s">
+        <div class="ov-rl-title"><span class="a">🎲 MENGACAK ARENA...</span><span class="b">ARENA RONDE ${m.round}</span></div>
+        <div class="ov-rl-window">
+          <div class="ov-rl-strip" data-ref="strip" data-target="${target}" style="--i:2">${html}</div>
+          <div class="ov-rl-pointer top"></div><div class="ov-rl-pointer bottom"></div>
+        </div>
+        <div class="ov-rl-info" style="--a:${map.accent}">
+          <div class="ov-rl-info-name">${map.icon} ${esc(map.name)}</div>
+          <div class="ov-rl-info-tip">${esc(map.tip)}</div>
         </div>
       </div>`;
     }
@@ -89,7 +126,7 @@
       return `<div class="ov-dim"></div>
       <div class="ov-result pop-in">
         <div class="panel ov-card wide">
-          <div class="panel-header">RONDE ${m.round} SELESAI!</div>
+          <div class="panel-header">RONDE ${m.round} SELESAI! · ${m.mapInfo().icon} ${esc(m.mapInfo().name)}</div>
           <div class="ov-rows">${rows}</div>
           <div class="ov-next" data-ref="next"></div>
         </div>
@@ -127,6 +164,7 @@
     function build(m) {
       let html = '';
       if (m.phase === 'lobby') html = lobbyHtml(m);
+      else if (m.phase === 'roulette') html = rouletteHtml(m);
       else if (m.phase === 'intro') html = hud(m) + introHtml(m);
       else if (m.phase === 'countdown') html = hud(m) + countdownHtml();
       else if (m.phase === 'play') html = hud(m) + '<div class="ov-count" data-ref="count"></div>';
@@ -139,6 +177,14 @@
         refs[n.dataset.ref] = n;
       });
       refs.count && (refs.count.dataset.v = '');
+      if (refs.strip) {
+        // Mulai gulir di frame berikutnya supaya transisi CSS berjalan dari posisi awal.
+        const strip = refs.strip;
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          strip.classList.add('go');
+          strip.style.setProperty('--i', strip.dataset.target);
+        }));
+      }
     }
 
     function render(m) {

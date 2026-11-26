@@ -7,7 +7,11 @@
   const TG = root.TankGame;
   const POINTS = [10, 7, 4, 2]; // juara 1, 2, 3, 4
   const ROUND_OPTIONS = [3, 5, 7];
-  const DURATION = { intro: 2.2, countdown: 3, roundEnd: 6.5 };
+  const Maps = root.TankMaps;
+  // roulette = layar acak arena sebelum tiap ronde (gulir ~3 detik, lalu tampil arena terpilih).
+  const DURATION = { roulette: 5, intro: 2.2, countdown: 3, roundEnd: 6.5 };
+  const ROULETTE_SPIN = 3.1; // detik sampai kartu arena berhenti
+  const LOBBY_MAP = 'meadow';
   const ROUND_TIME = 90; // detik per ronde sebelum diakhiri paksa
   const GO_TIME = 0.8; // tulisan GO! tampil di awal fase main
 
@@ -19,7 +23,8 @@
       phaseTime: 0, // detik sejak fase dimulai
       round: 0,
       rounds: 3,
-      game: TG.createGame(),
+      game: TG.createGame(LOBBY_MAP),
+      playlist: [], // urutan arena untuk game ini, tanpa pengulangan
       participants: [], // { id, name, bot, slot, total, waiting }
       results: [], // hasil ronde terakhir
       elim: new Map(), // id -> tick tereliminasi
@@ -41,7 +46,7 @@
     }
 
     function buildRoundGame() {
-      m.game = TG.createGame();
+      m.game = TG.createGame(m.playlist[m.round - 1]);
       m.elim = new Map();
       m.tick = 0;
       for (const p of m.participants) {
@@ -53,7 +58,7 @@
 
     // Lobby: tampilkan tank yang sudah bergabung supaya arena tidak kosong.
     function buildLobbyGame() {
-      m.game = TG.createGame();
+      m.game = TG.createGame(LOBBY_MAP);
       for (const p of m.participants) {
         const tank = TG.addPlayer(m.game, p.id, p.name, p.slot);
         if (tank) p.color = tank.color;
@@ -121,11 +126,29 @@
         }
       }
       for (const p of m.participants) p.total = 0;
+      // Arena diacak sekali per game; tiap ronde memakai arena berbeda (7 arena, maks 7 ronde).
+      m.playlist = Maps.shuffle(Maps.IDS).slice(0, m.rounds);
       m.round = 1;
       m.results = [];
       buildRoundGame();
-      setPhase('intro');
+      setPhase('roulette');
       return true;
+    };
+
+    // Info arena ronde ini (untuk UI TV dan HP).
+    m.mapInfo = function () {
+      const map = m.game.map;
+      return { id: map.id, name: map.name, icon: map.icon, tip: map.tip, accent: map.accent };
+    };
+
+    // Arena yang sudah dipakai ronde-ronde sebelumnya.
+    m.usedMaps = function () {
+      return m.playlist.slice(0, Math.max(0, m.round - 1));
+    };
+
+    // true setelah gulungan acak arena berhenti.
+    m.rouletteDone = function () {
+      return m.phase !== 'roulette' || m.phaseTime >= ROULETTE_SPIN;
     };
 
     m.toLobby = function () {
@@ -200,7 +223,10 @@
       m.phaseTime += dt;
       const events = [];
 
-      if (m.phase === 'intro' && m.phaseTime >= DURATION.intro) {
+      if (m.phase === 'roulette' && m.phaseTime >= DURATION.roulette) {
+        setPhase('intro');
+        events.push({ type: 'phase', phase: 'intro' });
+      } else if (m.phase === 'intro' && m.phaseTime >= DURATION.intro) {
         setPhase('countdown');
         events.push({ type: 'phase', phase: 'countdown' });
       } else if (m.phase === 'countdown' && m.phaseTime >= DURATION.countdown) {
@@ -233,8 +259,8 @@
           if (m.round < m.rounds) {
             m.round++;
             buildRoundGame();
-            setPhase('intro');
-            events.push({ type: 'phase', phase: 'intro' });
+            setPhase('roulette');
+            events.push({ type: 'phase', phase: 'roulette' });
           } else {
             setPhase('final');
             events.push({ type: 'phase', phase: 'final' });
@@ -288,8 +314,10 @@
         players: m.participants.length,
         place: res ? res.place : null,
         gain: res ? res.gain : null,
-        hp: tank ? tank.hp : 0,
+        hp: tank ? Math.max(0, Math.ceil(tank.hp)) : 0,
         lives: tank ? tank.lives : 0,
+        map: m.phase === 'lobby' ? null : m.mapInfo(),
+        mapReady: m.rouletteDone(),
         out: tank ? tank.eliminated : false,
         dash: tank ? Math.round(tank.dashCooldown * 10) / 10 : 0,
         fire: tank ? Math.round(tank.cooldown * 10) / 10 : 0,
@@ -300,5 +328,5 @@
     return m;
   }
 
-  root.TankMatch = { create, POINTS, ROUND_OPTIONS, ROUND_TIME };
+  root.TankMatch = { create, POINTS, ROUND_OPTIONS, ROUND_TIME, ROULETTE_SPIN, DURATION };
 })(typeof window !== 'undefined' ? window : globalThis);
