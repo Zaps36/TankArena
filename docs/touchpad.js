@@ -83,7 +83,7 @@
         <path class="arc-outline"/>
         <path class="arc-fill"/>
         <path class="arc-shine"/>
-        <text class="arc-label"><textPath href="#dashTextArc" startOffset="50%" text-anchor="middle">⚡ DASH</textPath></text>
+        <text class="arc-label"><textPath href="#dashTextArc" startOffset="50%" text-anchor="middle">DASH</textPath></text>
       </g>
       <path class="arc-hit"/>`;
     const q = (s) => svg.querySelector(s);
