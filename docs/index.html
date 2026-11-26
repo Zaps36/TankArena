@@ -3,6 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Tank Arena</title>
   <link rel="stylesheet" href="style.css" />
   <style>
@@ -70,7 +73,23 @@
   </div>
 
   <script>
+    // Layar penuh browser (dipicu klik pemain, jadi diizinkan). iPhone Safari tidak
+    // mendukungnya untuk halaman biasa; di sana pakai "Tambah ke Layar Utama".
+    function goFullscreen() {
+      const el = document.documentElement;
+      const req = el.requestFullscreen || el.webkitRequestFullscreen;
+      if (req && !document.fullscreenElement && !document.webkitFullscreenElement) {
+        try {
+          const r = req.call(el);
+          if (r && r.catch) r.catch(() => {});
+        } catch (e) {
+          // ditolak browser; abaikan
+        }
+      }
+    }
+
     document.getElementById('solo').addEventListener('click', () => {
+      goFullscreen();
       document.getElementById('menu').style.display = 'none';
       document.querySelector('.clouds').style.display = 'none';
       document.getElementById('game-shell').style.display = 'grid';
