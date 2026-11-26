@@ -64,6 +64,21 @@
     }
     match.start();
     pushStatus();
+    goFullscreen();
+  }
+
+  // Layar penuh saat game dimulai (dipicu klik host, jadi diizinkan browser).
+  function goFullscreen() {
+    const el = document.documentElement;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (req && !document.fullscreenElement) {
+      try {
+        const r = req.call(el);
+        if (r && r.catch) r.catch(() => {});
+      } catch (e) {
+        // sebagian browser menolak; abaikan
+      }
+    }
   }
 
   function controllerUrl(code) {
@@ -250,6 +265,14 @@
     humans: () => match.participants.filter((p) => !p.bot).map((p) => ({ id: p.id, name: p.name })),
     match: () => ({ phase: match.phase, round: match.round, rounds: match.rounds, standings: match.standings().map((p) => [p.name, p.total]) }),
   };
+
+  $('fs-btn').addEventListener('click', () => {
+    if (document.fullscreenElement) {
+      (document.exitFullscreen || document.webkitExitFullscreen || function () {}).call(document);
+    } else {
+      goFullscreen();
+    }
+  });
 
   window.addEventListener('beforeunload', () => host.destroy());
   requestAnimationFrame((now) => {

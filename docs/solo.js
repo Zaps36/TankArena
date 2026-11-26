@@ -13,7 +13,6 @@
   let last = performance.now();
 
   const overlay = TankOverlay.create(document.getElementById('stage'), {
-    showStandings: true,
     onStart: () => match.start(),
     onRounds: (n) => match.setRounds(n),
     onPlayAgain: () => match.playAgain(),

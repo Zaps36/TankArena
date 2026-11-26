@@ -40,7 +40,7 @@
         <span class="ov-pill"><b>RONDE ${m.round}</b>/${m.rounds}</span>
         <span class="ov-pill">${m.mapInfo().icon} ${esc(m.mapInfo().name)}</span>
         <span class="ov-pill ov-timer" data-ref="timer">1:30</span>
-      </div>${o.showStandings ? '<div class="ov-mini" data-ref="mini"></div>' : ''}`;
+      </div><div class="ov-board" data-ref="board"><div class="ov-board-title">👑 JUARA</div><div class="ov-board-rows" data-ref="boardRows"></div></div>`;
     }
 
     function lobbyHtml(m) {
@@ -213,10 +213,19 @@
         }
       }
 
-      if (refs.mini) {
+      if (refs.boardRows) {
         const s = m.standings();
-        const html = s.map((p) => `<span class="ov-mini-row">${tankAvatar(p.color, 18)}<b>${p.total}</b></span>`).join('');
-        if (refs.mini.innerHTML !== html) refs.mini.innerHTML = html;
+        const top = s[0] ? s[0].total : 0;
+        const html = s.map((p, i) => {
+          const lead = i === 0 && top > 0;
+          return `<div class="ov-board-row${lead ? ' lead' : ''}">
+            <span class="ov-board-rank">${lead ? '👑' : i + 1}</span>
+            ${tankAvatar(p.color, 22)}
+            <span class="ov-board-name">${esc(p.name)}</span>
+            <span class="ov-board-pts">${p.total}</span>
+          </div>`;
+        }).join('');
+        if (refs.boardRows.innerHTML !== html) refs.boardRows.innerHTML = html;
       }
 
       if (m.phase === 'roundEnd') {
