@@ -445,74 +445,67 @@
       // (kecuali tank milik pemain sendiri di mode solo).
       if (p.hid && !highlight) return;
 
-      // Label nama dan bar HP.
+      // Label nama, bar HP, dan bar DASH mini di bawahnya.
       ctx.font = `14px ${TITLE_FONT}`;
       const nameW = Math.max(44, ctx.measureText(p.name).width + 16);
       ctx.fillStyle = INK;
-      roundRect(ctx, p.x - nameW / 2, p.y - 56, nameW, 20, 8);
+      roundRect(ctx, p.x - nameW / 2, p.y - 60, nameW, 20, 8);
       ctx.fill();
-      outlinedText(ctx, p.name, p.x, p.y - 46, { size: 14, fill: p.color, width: 0.01 });
+      outlinedText(ctx, p.name, p.x, p.y - 50, { size: 14, fill: p.color, width: 0.01 });
 
       const hpW = 46;
+      const barX = p.x - hpW / 2;
+      // Satu wadah gelap untuk dua bar: HP (atas) dan DASH (bawah).
       ctx.fillStyle = INK;
-      roundRect(ctx, p.x - hpW / 2 - 2, p.y - 35, hpW + 4, 11, 5);
+      roundRect(ctx, barX - 2, p.y - 39, hpW + 4, 16, 5);
       ctx.fill();
       const ratio = Math.max(0, p.hp) / 100;
       ctx.fillStyle = ratio > 0.6 ? '#4cd964' : ratio > 0.3 ? '#ffd23f' : '#ff4d5e';
       if (ratio > 0) {
-        roundRect(ctx, p.x - hpW / 2, p.y - 33, hpW * ratio, 7, 3);
+        roundRect(ctx, barX, p.y - 37, hpW * ratio, 7, 3);
         ctx.fill();
         ctx.fillStyle = 'rgba(255, 255, 255, .4)';
-        ctx.fillRect(p.x - hpW / 2 + 2, p.y - 32, Math.max(0, hpW * ratio - 4), 2);
+        ctx.fillRect(barX + 2, p.y - 36, Math.max(0, hpW * ratio - 4), 2);
+      }
+
+      // Bar DASH: terisi selama cooldown, ungu terang + kilau saat penuh (siap dash).
+      const target = 1 - Math.min(1, Math.max(0, p.dashCooldown || 0) / root.TankGame.DASH_COOLDOWN);
+      if (t.dashFill === undefined) t.dashFill = target;
+      // Turun langsung saat dash dipakai, naik halus mengikuti data yang datang tiap ~0,1 detik.
+      t.dashFill = target < t.dashFill ? target : t.dashFill + (target - t.dashFill) * 0.25;
+      const full = target >= 1;
+      if (full && !t.dashFull) t.dashFlash = 1;
+      t.dashFull = full;
+      t.dashFlash = Math.max(0, (t.dashFlash || 0) - 0.05);
+      ctx.fillStyle = 'rgba(166, 107, 255, .25)';
+      roundRect(ctx, barX, p.y - 28, hpW, 3.5, 1.75);
+      ctx.fill();
+      if (t.dashFill > 0.02) {
+        ctx.fillStyle = full ? '#b98cff' : '#7d55c7';
+        roundRect(ctx, barX, p.y - 28, hpW * Math.min(1, t.dashFill), 3.5, 1.75);
+        ctx.fill();
+      }
+      if (full) {
+        // Kilau kecil yang lewat pelan di bar penuh.
+        const k = ((now / 1400 + t.blinkSeed) % 1) * (hpW + 16) - 8;
+        ctx.save();
+        roundRect(ctx, barX, p.y - 28, hpW, 3.5, 1.75);
+        ctx.clip();
+        ctx.fillStyle = 'rgba(255, 255, 255, .85)';
+        ctx.fillRect(barX + k, p.y - 28, 6, 3.5);
+        ctx.restore();
+      }
+      if (t.dashFlash > 0) {
+        // Kedip putih singkat saat bar baru penuh.
+        ctx.globalAlpha = t.dashFlash;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        roundRect(ctx, barX - 3, p.y - 31, hpW + 6, 9.5, 4);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
       }
 
       drawHearts(ctx, p.x, p.y + 33, Math.max(0, p.lives), 11);
-
-      // Penanda DASH siap: lingkaran ungu kecil berpetir di kanan bar HP.
-      // Muncul dengan "pop" saat dash baru siap, hilang selama cooldown.
-      const ready = !(p.dashCooldown > 0);
-      if (ready && !t.dashReady) t.dashPop = 1;
-      t.dashReady = ready;
-      if (ready) {
-        t.dashPop = Math.max(0, (t.dashPop || 0) - 0.06);
-        const s = (1 + Math.sin((1 - t.dashPop) * Math.PI) * t.dashPop * 0.9) * 1.55;
-        const bx = p.x + hpW / 2 + 15;
-        const by = p.y - 30;
-        ctx.save();
-        ctx.translate(bx, by);
-        // Cahaya berdenyut pelan supaya mudah terlihat di semua arena.
-        const glow = 0.5 + Math.sin(now / 260 + t.blinkSeed) * 0.5;
-        ctx.globalAlpha = 0.25 + glow * 0.35;
-        ctx.fillStyle = '#d2b6ff';
-        ctx.beginPath();
-        ctx.arc(0, 0, 7 * s + 3 + glow * 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-        ctx.scale(s, s);
-        ctx.fillStyle = INK;
-        ctx.beginPath();
-        ctx.arc(0, 0, 8.2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(0, 0, 6.9, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#8b4dff';
-        ctx.beginPath();
-        ctx.arc(0, 0, 5.6, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#ffe066';
-        ctx.beginPath();
-        ctx.moveTo(1.2, -4.2);
-        ctx.lineTo(-2.6, 0.6);
-        ctx.lineTo(-0.2, 0.6);
-        ctx.lineTo(-1.2, 4.2);
-        ctx.lineTo(2.6, -0.8);
-        ctx.lineTo(0.2, -0.8);
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
-      }
 
       if (highlight) {
         const bob = Math.sin(now / 180) * 4;
@@ -520,9 +513,9 @@
         ctx.strokeStyle = INK;
         ctx.lineWidth = 3.5;
         ctx.beginPath();
-        ctx.moveTo(p.x - 9, p.y - 74 + bob);
-        ctx.lineTo(p.x + 9, p.y - 74 + bob);
-        ctx.lineTo(p.x, p.y - 62 + bob);
+        ctx.moveTo(p.x - 9, p.y - 78 + bob);
+        ctx.lineTo(p.x + 9, p.y - 78 + bob);
+        ctx.lineTo(p.x, p.y - 66 + bob);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
