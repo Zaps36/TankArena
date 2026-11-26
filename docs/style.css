@@ -382,13 +382,14 @@ html, body {
 .ov-rl-title { position: relative; height: 1.3em; width: 100%; text-align: center; font-family: var(--font-title); font-size: min(7cqh, 2.6em); letter-spacing: 1px; color: var(--yellow); -webkit-text-stroke: 4px var(--ink); paint-order: stroke fill; text-shadow: 0 5px 0 var(--ink); }
 .ov-rl-title span { position: absolute; left: 0; right: 0; }
 .ov-rl-title .a { animation: rl-pulse .5s ease-in-out infinite alternate, rl-hide .2s linear var(--spin) forwards; }
-.ov-rl-title .b { opacity: 0; color: #fff; animation: title-pop .5s cubic-bezier(.3,1.8,.5,1) var(--spin) forwards; }
+.ov-rl-title .b { opacity: 0; color: #fff; animation: rl-show .5s cubic-bezier(.3,1.8,.5,1) var(--spin) forwards; }
+@keyframes rl-show { from { opacity: 0; transform: scale(.3); } to { opacity: 1; transform: scale(1); } }
 @keyframes rl-pulse { to { transform: scale(1.06); } }
 @keyframes rl-hide { to { opacity: 0; } }
 
-.ov-rl-window { position: relative; width: 100%; height: calc(var(--cw) * .7 + 3.4em); overflow: hidden;
+.ov-rl-window { position: relative; width: 100%; height: calc(var(--cw) * .7 + 7em); overflow: hidden;
   -webkit-mask: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent); mask: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent); }
-.ov-rl-strip { position: absolute; top: 1.2em; left: 0; display: flex; gap: var(--gap); will-change: transform;
+.ov-rl-strip { position: absolute; top: 2.3em; left: 0; display: flex; gap: var(--gap); will-change: transform;
   transform: translateX(calc(50cqw - var(--cw) / 2 - var(--i) * (var(--cw) + var(--gap)))); }
 /* Cepat di awal lalu melambat panjang, seperti roda undian. */
 .ov-rl-strip.go { transition: transform var(--spin) cubic-bezier(.08, .72, .12, 1); }
