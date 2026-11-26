@@ -66,6 +66,14 @@
       .sidebar { width: 100%; max-width: 420px; }
       .stage { width: 100%; max-width: none; }
     }
+
+    /* Saat game berjalan (bukan lobby): hanya arena, memenuhi layar, tanpa panel QR/pemain. */
+    body.playing.sky { background: #120c24; animation: none; }
+    body.playing .clouds, body.playing .sidebar { display: none; }
+    body.playing .layout { flex-direction: row; gap: 0; padding: 0; height: 100%; min-height: 0; overflow: hidden; }
+    body.playing .stage { flex: none; width: min(100vw, calc(100vh * 1000 / 700)); max-width: none; }
+    body.playing .stage canvas { border-radius: 0; box-shadow: none; }
+    body.playing .stage .ov { border-radius: 0; }
   </style>
 </head>
 <body class="sky">
