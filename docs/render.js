@@ -449,23 +449,23 @@
       ctx.font = `14px ${TITLE_FONT}`;
       const nameW = Math.max(44, ctx.measureText(p.name).width + 16);
       ctx.fillStyle = INK;
-      roundRect(ctx, p.x - nameW / 2, p.y - 60, nameW, 20, 8);
+      roundRect(ctx, p.x - nameW / 2, p.y - 63, nameW, 20, 8);
       ctx.fill();
-      outlinedText(ctx, p.name, p.x, p.y - 50, { size: 14, fill: p.color, width: 0.01 });
+      outlinedText(ctx, p.name, p.x, p.y - 53, { size: 14, fill: p.color, width: 0.01 });
 
       const hpW = 46;
       const barX = p.x - hpW / 2;
       // Satu wadah gelap untuk dua bar: HP (atas) dan DASH (bawah).
       ctx.fillStyle = INK;
-      roundRect(ctx, barX - 2, p.y - 39, hpW + 4, 16, 5);
+      roundRect(ctx, barX - 2, p.y - 42, hpW + 4, 19, 5);
       ctx.fill();
       const ratio = Math.max(0, p.hp) / 100;
       ctx.fillStyle = ratio > 0.6 ? '#4cd964' : ratio > 0.3 ? '#ffd23f' : '#ff4d5e';
       if (ratio > 0) {
-        roundRect(ctx, barX, p.y - 37, hpW * ratio, 7, 3);
+        roundRect(ctx, barX, p.y - 40, hpW * ratio, 7, 3);
         ctx.fill();
         ctx.fillStyle = 'rgba(255, 255, 255, .4)';
-        ctx.fillRect(barX + 2, p.y - 36, Math.max(0, hpW * ratio - 4), 2);
+        ctx.fillRect(barX + 2, p.y - 39, Math.max(0, hpW * ratio - 4), 2);
       }
 
       // Bar DASH: terisi selama cooldown, ungu terang + kilau saat penuh (siap dash).
@@ -477,22 +477,22 @@
       if (full && !t.dashFull) t.dashFlash = 1;
       t.dashFull = full;
       t.dashFlash = Math.max(0, (t.dashFlash || 0) - 0.05);
-      ctx.fillStyle = 'rgba(166, 107, 255, .25)';
-      roundRect(ctx, barX, p.y - 28, hpW, 3.5, 1.75);
+      ctx.fillStyle = '#463a66';
+      roundRect(ctx, barX, p.y - 31, hpW, 6, 3);
       ctx.fill();
       if (t.dashFill > 0.02) {
-        ctx.fillStyle = full ? '#b98cff' : '#7d55c7';
-        roundRect(ctx, barX, p.y - 28, hpW * Math.min(1, t.dashFill), 3.5, 1.75);
+        ctx.fillStyle = full ? '#c9a2ff' : '#9467e8';
+        roundRect(ctx, barX, p.y - 31, Math.max(6, hpW * Math.min(1, t.dashFill)), 6, 3);
         ctx.fill();
       }
       if (full) {
         // Kilau kecil yang lewat pelan di bar penuh.
         const k = ((now / 1400 + t.blinkSeed) % 1) * (hpW + 16) - 8;
         ctx.save();
-        roundRect(ctx, barX, p.y - 28, hpW, 3.5, 1.75);
+        roundRect(ctx, barX, p.y - 31, hpW, 6, 3);
         ctx.clip();
-        ctx.fillStyle = 'rgba(255, 255, 255, .85)';
-        ctx.fillRect(barX + k, p.y - 28, 6, 3.5);
+        ctx.fillStyle = 'rgba(255, 255, 255, .9)';
+        ctx.fillRect(barX + k, p.y - 31, 7, 6);
         ctx.restore();
       }
       if (t.dashFlash > 0) {
@@ -500,7 +500,7 @@
         ctx.globalAlpha = t.dashFlash;
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 2;
-        roundRect(ctx, barX - 3, p.y - 31, hpW + 6, 9.5, 4);
+        roundRect(ctx, barX - 4, p.y - 44, hpW + 8, 23, 6);
         ctx.stroke();
         ctx.globalAlpha = 1;
       }
@@ -513,9 +513,9 @@
         ctx.strokeStyle = INK;
         ctx.lineWidth = 3.5;
         ctx.beginPath();
-        ctx.moveTo(p.x - 9, p.y - 78 + bob);
-        ctx.lineTo(p.x + 9, p.y - 78 + bob);
-        ctx.lineTo(p.x, p.y - 66 + bob);
+        ctx.moveTo(p.x - 9, p.y - 81 + bob);
+        ctx.lineTo(p.x + 9, p.y - 81 + bob);
+        ctx.lineTo(p.x, p.y - 69 + bob);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
