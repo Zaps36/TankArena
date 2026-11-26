@@ -550,16 +550,22 @@
     },
 
     basalt(b, o) {
-      shadowRect(b, o, 10);
-      b.fillStyle = '#3a2f33';
-      b.strokeStyle = INK;
-      b.lineWidth = 4;
+      b.fillStyle = 'rgba(0,0,0,.45)';
+      rr(b, o.x + 5, o.y + 8, o.w, o.h, 10);
+      b.fill();
+      // Lebih terang dari lantai supaya batu terlihat jelas di arena gelap.
+      const g = b.createLinearGradient(0, o.y, 0, o.y + o.h);
+      g.addColorStop(0, '#8a7480');
+      g.addColorStop(1, '#5b4852');
+      b.fillStyle = g;
+      b.strokeStyle = '#140c10';
+      b.lineWidth = 5;
       rr(b, o.x, o.y, o.w, o.h, 10);
       b.fill();
       b.save();
       rr(b, o.x, o.y, o.w, o.h, 10);
       b.clip();
-      b.strokeStyle = '#5c4b54';
+      b.strokeStyle = 'rgba(30, 18, 24, .55)';
       b.lineWidth = 2.5;
       const s = 16;
       for (let y = o.y - s; y < o.y + o.h + s; y += s * 1.5) {
@@ -583,9 +589,17 @@
       b.lineTo(o.x + o.w * 0.45, o.y + o.h * 0.55);
       b.lineTo(o.x + o.w * 0.6, o.y + o.h * 0.65);
       b.stroke();
-      b.fillStyle = 'rgba(255,255,255,.12)';
-      b.fillRect(o.x, o.y, o.w, 6);
+      b.fillStyle = 'rgba(255,255,255,.22)';
+      b.fillRect(o.x, o.y, o.w, 7);
       b.restore();
+      b.strokeStyle = '#140c10';
+      b.lineWidth = 5;
+      rr(b, o.x, o.y, o.w, o.h, 10);
+      b.stroke();
+      b.strokeStyle = 'rgba(255, 138, 43, .55)';
+      b.lineWidth = 2;
+      rr(b, o.x - 4, o.y - 4, o.w + 8, o.h + 8, 13);
+      b.stroke();
     },
 
     machine(b, o) {
