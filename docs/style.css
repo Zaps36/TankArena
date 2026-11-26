@@ -250,12 +250,20 @@ html, body {
 }
 .action::before { content: ''; position: absolute; top: 8%; left: 18%; width: 64%; height: 30%; border-radius: 50%; background: rgba(255,255,255,.4); pointer-events: none; }
 .action span { position: relative; pointer-events: none; }
-/* DASH besar di kiri-atas stik SERANG (diagonal), mudah dijangkau ibu jari kanan. */
-.action.dash {
-  bottom: calc(166px + env(safe-area-inset-bottom)); right: calc(162px + env(safe-area-inset-right)); width: 96px; height: 96px; font-size: 17px;
-  background: radial-gradient(circle at 50% 35%, #d2b6ff, var(--purple) 55%, var(--purple-dark));
-  box-shadow: inset 0 -6px 0 var(--purple-dark), 0 7px 0 var(--ink);
-}
+/* DASH: pita melengkung dari atas sampai kiri stik SERANG (posisi diatur touchpad.js).
+   Hanya pita (.arc-hit) yang menerima sentuhan. */
+.dash-arc, .pad > .dash-arc { position: fixed; left: 0; top: 0; width: 0; height: 0; overflow: visible; pointer-events: none; touch-action: none; -webkit-tap-highlight-color: transparent; }
+.dash-arc path { fill: none; stroke-linecap: round; }
+.dash-arc .arc-shadow { stroke: var(--ink); transform: translateY(6px); }
+.dash-arc .arc-outline { stroke: var(--ink); }
+.dash-arc .arc-fill { stroke: url(#dashGrad); }
+.dash-arc .arc-shine { stroke: rgba(255, 255, 255, .45); }
+.dash-arc .arc-hit { stroke: transparent; pointer-events: stroke; cursor: pointer; touch-action: none; }
+.dash-arc .arc-label { font-family: var(--font-title); letter-spacing: 3px; fill: #fff; stroke: var(--ink); stroke-width: 4px; paint-order: stroke fill; stroke-linejoin: round; pointer-events: none; }
+.dash-arc .arc-body { transition: transform .08s; }
+.dash-arc.pressed .arc-body { transform: translateY(5px); }
+.dash-arc.pressed .arc-shadow { opacity: .35; }
+.dash-arc.cooldown { filter: grayscale(.8) brightness(.85); }
 .action.pressed { transform: translateY(6px) scale(.96); box-shadow: inset 0 -2px 0 rgba(0,0,0,.3), 0 1px 0 var(--ink); }
 .action.cooldown { filter: grayscale(.8) brightness(.85); }
 
@@ -265,7 +273,6 @@ html, body {
   .stick .knob { width: 52px; height: 52px; left: 32px; top: 32px; }
   .stick.attack { width: 146px; height: 146px; }
   .stick.attack .knob { width: 64px; height: 64px; left: 36px; top: 36px; }
-  .action.dash { width: 84px; height: 84px; bottom: calc(142px + env(safe-area-inset-bottom)); right: calc(142px + env(safe-area-inset-right)); font-size: 15px; }
 }
 
 /* Status koneksi kecil. */

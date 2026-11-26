@@ -67,6 +67,67 @@
     stick.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
+  // Tombol DASH berbentuk pita melengkung (seperempat lingkaran) yang memeluk stik SERANG
+  // dari atas sampai kiri. Dibuat dengan SVG supaya hanya pita yang bisa disentuh;
+  // sentuhan ke stik di tengahnya tetap sampai ke stik. Posisi dihitung dari stik SERANG.
+  function setupArcButton(svg, stick) {
+    svg.innerHTML = `
+      <defs>
+        <linearGradient id="dashGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#e2d0ff"/><stop offset=".5" stop-color="#a66bff"/><stop offset="1" stop-color="#6e3bd1"/>
+        </linearGradient>
+        <path id="dashTextArc" fill="none"/>
+      </defs>
+      <path class="arc-shadow"/>
+      <g class="arc-body">
+        <path class="arc-outline"/>
+        <path class="arc-fill"/>
+        <path class="arc-shine"/>
+        <text class="arc-label"><textPath href="#dashTextArc" startOffset="50%" text-anchor="middle">⚡ DASH</textPath></text>
+      </g>
+      <path class="arc-hit"/>`;
+    const q = (s) => svg.querySelector(s);
+
+    function arc(cx, cy, r) {
+      // Dari kiri (jam 9) searah jarum jam ke atas (jam 12).
+      return `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx} ${cy - r}`;
+    }
+
+    function layout() {
+      const r = stick.getBoundingClientRect();
+      if (!r.width) return;
+      const s = r.width;
+      const gap = s * 0.07;
+      const th = s * 0.36; // tebal pita
+      const ri = s / 2 + gap;
+      const rm = ri + th / 2;
+      const pad = th / 2 + 12;
+      const size = (rm + pad) * 2;
+      const c = size / 2;
+      svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+      svg.style.width = `${size}px`;
+      svg.style.height = `${size}px`;
+      svg.style.left = `${r.left + s / 2 - c}px`;
+      svg.style.top = `${r.top + s / 2 - c}px`;
+      const main = arc(c, c, rm);
+      for (const sel of ['.arc-shadow', '.arc-outline', '.arc-fill', '.arc-hit']) q(sel).setAttribute('d', main);
+      q('#dashTextArc').setAttribute('d', arc(c, c, rm - th * 0.12));
+      q('.arc-shine').setAttribute('d', arc(c, c, rm + th * 0.26));
+      q('.arc-shadow').style.strokeWidth = `${th + 8}px`;
+      q('.arc-outline').style.strokeWidth = `${th + 8}px`;
+      q('.arc-hit').style.strokeWidth = `${th + 10}px`;
+      q('.arc-fill').style.strokeWidth = `${th}px`;
+      q('.arc-shine').style.strokeWidth = `${th * 0.18}px`;
+      q('.arc-label').style.fontSize = `${th * 0.4}px`;
+    }
+
+    layout();
+    if (typeof ResizeObserver === 'function') new ResizeObserver(layout).observe(stick);
+    window.addEventListener('resize', layout);
+    window.addEventListener('orientationchange', () => setTimeout(layout, 250));
+    return layout;
+  }
+
   // el: { left, leftKnob, attack, attackKnob, dash, ring? }
   // opts.onChange(input, reason): dipanggil setiap input berubah (untuk kirim segera).
   // opts.cooldown: durasi cooldown tembak (detik), untuk animasi cincin lokal.
@@ -147,6 +208,8 @@
         changed('shot');
       },
     });
+
+    if (typeof SVGElement !== 'undefined' && el.dash instanceof SVGElement) setupArcButton(el.dash, el.attack);
 
     // Dash dikirim sebagai pulsa singkat; game memicu dash pada transisi false -> true.
     el.dash.addEventListener('pointerdown', (e) => {
