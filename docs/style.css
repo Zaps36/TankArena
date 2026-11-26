@@ -250,8 +250,9 @@ html, body {
 }
 .action::before { content: ''; position: absolute; top: 8%; left: 18%; width: 64%; height: 30%; border-radius: 50%; background: rgba(255,255,255,.4); pointer-events: none; }
 .action span { position: relative; pointer-events: none; }
+/* DASH besar di kiri-atas stik SERANG (diagonal), mudah dijangkau ibu jari kanan. */
 .action.dash {
-  bottom: calc(150px + env(safe-area-inset-bottom)); right: calc(212px + env(safe-area-inset-right)); width: 78px; height: 78px; font-size: 14px;
+  bottom: calc(166px + env(safe-area-inset-bottom)); right: calc(162px + env(safe-area-inset-right)); width: 96px; height: 96px; font-size: 17px;
   background: radial-gradient(circle at 50% 35%, #d2b6ff, var(--purple) 55%, var(--purple-dark));
   box-shadow: inset 0 -6px 0 var(--purple-dark), 0 7px 0 var(--ink);
 }
@@ -264,7 +265,7 @@ html, body {
   .stick .knob { width: 52px; height: 52px; left: 32px; top: 32px; }
   .stick.attack { width: 146px; height: 146px; }
   .stick.attack .knob { width: 64px; height: 64px; left: 36px; top: 36px; }
-  .action.dash { width: 66px; height: 66px; bottom: calc(160px + env(safe-area-inset-bottom)); right: calc(178px + env(safe-area-inset-right)); font-size: 12px; }
+  .action.dash { width: 84px; height: 84px; bottom: calc(142px + env(safe-area-inset-bottom)); right: calc(142px + env(safe-area-inset-right)); font-size: 15px; }
 }
 
 /* Status koneksi kecil. */
